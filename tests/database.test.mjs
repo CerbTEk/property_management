@@ -11,6 +11,7 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  await db.exec(await readFile(new URL('../database/guest_experience.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/display_devices.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/display_personalization.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../database/display_pairing.sql',import.meta.url),'utf8'));
  const login=async id=>{await db.exec(`reset role; set role authenticated; select set_config('request.jwt.claim.sub','${id}',false);`);};
  await login(a);
  const result=await db.query(`insert into ts_properties(owner_id,name,weekday_cents,weekend_cents) values($1,'Pilot room',5600,7000) returning id`,[a]);const p=result.rows[0].id;

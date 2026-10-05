@@ -14,6 +14,7 @@ import java.net.URL;
 import javax.net.ssl.HttpsURLConnection;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -45,9 +46,21 @@ public final class MainActivity extends Activity {
   Button settings=new Button(this);settings.setText("Screen settings");settings.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Screen connection").setMessage("Disconnect this TV to enter a new private screen link. Revoke the link in the host workspace to invalidate all copies.").setPositiveButton("Disconnect",(d,w)->{generation++;handler.removeCallbacks(refresh);token="";getPreferences(MODE_PRIVATE).edit().clear().apply();content.removeAllViews();showSetup();}).setNegativeButton("Keep connection",null).show());controls.addView(settings);
  }
  private void showSetup(){
-  content.removeAllViews();status.setText("Connect this TV from Guest Experience → Create screen link.");
-  EditText input=new EditText(this);input.setSingleLine(true);input.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);input.setHint("Private screen link");input.setTextColor(Color.WHITE);input.setHintTextColor(Color.LTGRAY);content.addView(input);
-  Button connect=new Button(this);connect.setText("Connect screen");content.addView(connect);connect.setOnClickListener(v->{try{token=ScreenCredential.parse(input.getText().toString());getPreferences(MODE_PRIVATE).edit().putString("screen_token",token).apply();content.removeAllViews();fetchDisplay();}catch(IllegalArgumentException e){status.setText(e.getMessage());}});input.requestFocus();
+  content.removeAllViews();status.setText("Connect this TV from Guest Experience → Create pairing code.");
+  EditText input=new EditText(this);input.setSingleLine(true);input.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);input.setHint("Pairing code or private screen link");input.setTextColor(Color.WHITE);input.setHintTextColor(Color.LTGRAY);content.addView(input);
+  Button connect=new Button(this);connect.setText("Connect screen");content.addView(connect);connect.setOnClickListener(v->{String code=ScreenCredential.pairingCode(input.getText().toString());if(code!=null){pairScreen(code,connect);return;}try{token=ScreenCredential.parse(input.getText().toString());getPreferences(MODE_PRIVATE).edit().putString("screen_token",token).apply();content.removeAllViews();fetchDisplay();}catch(IllegalArgumentException e){status.setText(e.getMessage());}});input.requestFocus();
+ }
+ private void pairScreen(String code,Button connect){
+  connect.setEnabled(false);status.setText("Pairing…");final int request=++generation;
+  worker.execute(()->{String result=null;HttpsURLConnection connection=null;
+   try{
+    connection=(HttpsURLConnection)new URL(ENDPOINT).openConnection();connection.setRequestMethod("POST");connection.setDoOutput(true);connection.setConnectTimeout(10000);connection.setReadTimeout(10000);connection.setInstanceFollowRedirects(false);connection.setUseCaches(false);connection.setRequestProperty("Content-Type","application/json");
+    byte[] body=new JSONObject().put("code",code).toString().getBytes(StandardCharsets.UTF_8);connection.setFixedLengthStreamingMode(body.length);
+    try(OutputStream out=connection.getOutputStream()){out.write(body);}
+    if(connection.getResponseCode()==200){try(InputStream stream=connection.getInputStream();ByteArrayOutputStream bytes=new ByteArrayOutputStream()){byte[] buffer=new byte[1024];int n;while((n=stream.read(buffer))!=-1){bytes.write(buffer,0,n);if(bytes.size()>4096)throw new IllegalStateException();}result=ScreenCredential.parse(new JSONObject(bytes.toString(StandardCharsets.UTF_8.name())).getString("token"));}}
+   }catch(Exception ignored){}finally{if(connection!=null)connection.disconnect();}
+   final String credential=result;handler.post(()->{if(!active||request!=generation)return;connect.setEnabled(true);if(credential==null){status.setText("Pairing failed. Check the code, expiry and connection.");return;}token=credential;getPreferences(MODE_PRIVATE).edit().putString("screen_token",token).apply();content.removeAllViews();fetchDisplay();});
+  });
  }
  private void fetchDisplay(){
   handler.removeCallbacks(refresh);if(!active||token.isEmpty())return;

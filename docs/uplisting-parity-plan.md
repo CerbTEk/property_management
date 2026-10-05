@@ -104,3 +104,7 @@ An owned browser player, named private screen links, 90-day expiry and permanent
 ## Scheduled welcome personalization
 
 Optional first-name greetings now follow confirmed stays saved in Treestand, using the listing timezone and check-in/checkout times. Generic greetings appear outside the stay or for ambiguous records. Ten automated checks pass, including daylight-saving and same-day turnover. The Airbnb import and physical Android TV installation remain pending.
+
+## One-time TV pairing
+
+Owned screens now accept single-use pairing codes with short expiry. Browser pairing is live after deployment; Android app source supports the same exchange but its APK build is still waiting for a GitHub runner. No WelcomeScreen integration has been removed.

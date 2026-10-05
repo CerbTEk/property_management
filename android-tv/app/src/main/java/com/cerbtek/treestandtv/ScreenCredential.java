@@ -2,6 +2,11 @@ package com.cerbtek.treestandtv;
 import java.net.URI;
 public final class ScreenCredential {
  private ScreenCredential() {}
+ public static String pairingCode(String value) {
+  if(value==null)return null;
+  String code=value.trim().toUpperCase(java.util.Locale.ROOT).replaceAll("[\\s-]","");
+  return code.matches("[0-9A-HJKMNP-TV-Z]{16}")?code:null;
+ }
  public static String parse(String value) {
   if(value==null)throw new IllegalArgumentException("Enter your private screen link.");
   String input=value.trim();

@@ -10,4 +10,10 @@ The guest-display Edge Function implements custom device bearer authentication; 
 
 Personalization is off by default. When enabled in Guest Experience, the screen shows the current confirmed guest’s first name from the listing’s local check-in time on arrival day until its local checkout time on departure day. Outside that window, or if stays are ambiguous, it uses Guest. Timezone and daylight-saving handling are tested. This uses only bookings saved in Treestand; channel booking import is still pending. Media uploads, Wi-Fi sharing, weather, store and AI chat remain pending. No WelcomeScreen app pairing or integration is modified by this release.
 
-Validation: ten automated checks pass including database ownership, device immutability and revocation, endpoint authorization and response scoping, existing bookings, calendar and rates, local stay timing, checkout, turnover and daylight-saving transitions. Live endpoint verification uses a temporary screen that is revoked and removed after the check. Physical TV testing remains required.
+Validation: eleven automated checks pass including database ownership, device immutability and revocation, endpoint authorization and response scoping, existing bookings, calendar and rates, local stay timing, checkout, turnover and daylight-saving transitions. Live endpoint verification uses a temporary screen that is revoked and removed after the check. Physical TV testing remains required.
+
+## One-time pairing
+
+Guest Experience offers Create pairing code alongside Create browser link. Pairing codes contain 80 random bits encoded as 16 Crockford base32 characters, grouped with hyphens. Codes are shown once, stored as SHA-256 hashes, and expire after nine minutes (under the ten-minute server limit). Enter a code at `/display/` or in the Android app. The code is a temporary bearer credential and should remain private.
+
+One conditional database UPDATE checks the code hash, pairing expiry, device expiry and revocation, clears the pairing fields and replaces the unused token hash. Only the successful claim receives a new 256-bit screen token; replay or concurrent losing claims fail. Direct table access remains owner-only. Owners cannot edit pairing hashes or re-enable revoked devices. Expired unpaired rows remain visible for revocation; there is no automatic deletion.
