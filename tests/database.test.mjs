@@ -6,7 +6,7 @@ import {btree_gist} from '@electric-sql/pglite/contrib/btree_gist';
 test('actual schema rejects foreign accounts, overlap and invalid occupancy',async()=>{
  const db=new PGlite({extensions:{btree_gist}});
  const a='00000000-0000-0000-0000-000000000001',b='00000000-0000-0000-0000-000000000002';
- await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key); create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb $$; grant usage on schema auth to authenticated; grant execute on function auth.jwt() to authenticated; grant execute on function auth.uid() to authenticated; insert into auth.users values('${a}'),('${b}');`);
+ await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key); create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb $$; grant usage on schema auth to authenticated; grant execute on function auth.jwt() to authenticated; grant execute on function auth.uid() to authenticated; insert into auth.users values('${a}'),('${b}'),('3f03551d-89de-4214-aa7a-db7a86fe1735');`);
  await db.exec(await readFile(new URL('../database/schema.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/guest_experience.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/display_devices.sql',import.meta.url),'utf8'));
@@ -55,6 +55,13 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  await assert.rejects(()=>db.query(`update ts_display_devices set revoked=false where id=$1`,[device.rows[0].id]),e=>e.code==='42501');
  await assert.rejects(()=>db.query(`update ts_properties set owner_id=$1 where id=$2`,[b,p]),e=>['42501','23503'].includes(e.code));
  await db.query(`update ts_reservations set status='cancelled' where id=$1`,[first.rows[0].id]);await book(a,'2026-10-05','2026-10-07');
+ await login('3f03551d-89de-4214-aa7a-db7a86fe1735');
+ await db.exec("select set_config('request.jwt.claims','{\"aal\":\"aal1\"}',false)");
+ const own=await db.query(`insert into ts_properties(owner_id,name,weekday_cents,weekend_cents) values($1,'Exempt pilot',5600,7000) returning id`,['3f03551d-89de-4214-aa7a-db7a86fe1735']);
+ assert.equal((await db.query('select * from ts_properties')).rows.length,1);
+ assert.equal((await db.query(`update ts_properties set name='Forbidden' where id=$1 returning id`,[p])).rows.length,0);
+ await login(a);
+ assert.equal((await db.query(`select * from ts_properties where id=$1`,[own.rows[0].id])).rows.length,0);
  await db.exec('reset role; set role anon;');await assert.rejects(()=>db.query('select * from ts_properties'),e=>e.code==='42501');
  await assert.rejects(()=>db.query('select * from ts_display_devices'),e=>e.code==='42501');
  await db.close();

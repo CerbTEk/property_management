@@ -40,4 +40,4 @@ Overview edits listing settings; Bookings edits confirmed manual reservations an
 
 ## Airbnb security readiness
 
-Host access requires authenticator MFA. See [readiness and remaining gaps](docs/airbnb-readiness.md) and [security operations](SECURITY.md). Deploy the MFA interface before applying `database/host_mfa.sql`. Approval, live provider connections and paid onboarding remain pending.
+Host access requires authenticator MFA, except the explicitly exempt manual pilot owner. See [readiness and remaining gaps](docs/airbnb-readiness.md) and [security operations](SECURITY.md). Deploy the MFA interface before applying `database/host_mfa.sql`. Approval, live provider connections and paid onboarding remain pending.

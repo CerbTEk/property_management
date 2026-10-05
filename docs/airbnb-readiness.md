@@ -8,7 +8,7 @@ Goal: replace Uplisting entirely with an owned Treestand PMS. No Uplisting conne
 | --- | --- | --- |
 | Airbnb API program agreements and security review | No direct access claimed | Obtain NDA, partner terms, commercial authorization and approved scopes; complete Airbnb review |
 | Owner authorization and least privilege | Per-owner RLS, same-owner property references, no anonymous host access | Provider OAuth consent, scope mapping and disconnect/revocation before connecting Airbnb |
-| MFA | Authenticator enrollment/challenge gate; database restrictive AAL2 policies on all six host tables | User completes enrollment; end-to-end authenticator testing and verified recovery procedures |
+| MFA | Authenticator enrollment/challenge gate; database restrictive AAL2 policies on all six host tables, with a user-authorized exception for the pilot owner | Other users complete enrollment; end-to-end authenticator testing and verified recovery procedures; resolve owner exception before claiming Airbnb compliance |
 | Protect guest information | Device endpoint restricted to room content; optional first-name display only during stay; no host/booking payloads | Provider-specific authorization for guest-display use; retention, deletion/export workflows and privacy notices |
 | Secure API use | Server-only privileged credentials; host and device identity separated | Implement only approved endpoints; documented rate limiting, webhook validation and retry/idempotency controls |
 | Vulnerability management | Weekly npm audit workflow, database/MFA tests and build checks | Successful hosted runs; quarterly full infrastructure/app scans, OWASP assessment and vendor reviews |
@@ -19,10 +19,14 @@ Goal: replace Uplisting entirely with an owned Treestand PMS. No Uplisting conne
 
 ## Rollout and verification
 
-Deploy the enrollment/challenge interface first, then apply database/host_mfa.sql. Existing password-only sessions must verify MFA to reopen their workspace. No account's authenticator secret is pre-created or stored by development tooling. The enrollment QR/key is shown only inside that user's authenticated setup screen. Abandoned unverified enrollments can be cleared by the setup flow; active factors are never removed there.
+Deploy the enrollment/challenge interface first, then apply database/host_mfa.sql. Existing password-only sessions must verify MFA to reopen their workspace, except the pilot owner whose login is explicitly exempt at their request. No account's authenticator secret is pre-created or stored by development tooling. The enrollment QR/key is shown only inside that user's authenticated setup screen. Abandoned unverified enrollments can be cleared by the setup flow; active factors are never removed there.
 
-Database tests exercise real restrictive policies with missing/AAL1/AAL2 claims: missing and password-only sessions cannot read any host table, cannot insert drafts, and cannot update listings; MFA still cannot bypass another owner's restrictions. MFA flow tests deny invalid codes, provider errors and stale assurance. Guest-device security tests continue independently. Tests do not prove a live authenticator flow or Airbnb approval.
+Database tests exercise real restrictive policies with missing/AAL1/AAL2 claims: non-exempt missing and password-only sessions cannot read any host table, cannot insert drafts, and cannot update listings; MFA still cannot bypass another owner's restrictions. MFA flow tests deny invalid codes, provider errors and stale assurance. Guest-device security tests continue independently. Tests do not prove a live authenticator flow or Airbnb approval.
 
 Keep guest-display credentials as a separate least-privilege device mechanism. Requiring a host login on guest TVs would expose unnecessary permissions. Their use with Airbnb-derived data requires evaluation under the approved scopes and agreement.
 
 Source: https://www.airbnb.com/help/article/3418 . This record is implementation evidence and an open-gap register, not certification or a substitute for Airbnb's partner-specific requirements.
+
+The pilot owner exception applies only to the existing manual workspace. There is no Airbnb connection or Airbnb-derived data in this workspace. Any future provider-connected permissions must be evaluated independently against Airbnb requirements; this exception is an open compliance gap.
+
+Launch gate confirmed by the owner: re-enable MFA for the pilot owner after development and before launch. Remove the exception from both `requiresHostMfa` and the restrictive database policies, then verify enrollment and password-only denial. Do not remove only the UI exception.

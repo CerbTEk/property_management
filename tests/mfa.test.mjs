@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mfaState,verifyMfa} from '../src/mfa.mjs';
+import {mfaState,verifyMfa,requiresHostMfa,pilotOwnerId} from '../src/mfa.mjs';
 const auth=(currentLevel,nextLevel,factors=[])=>({mfa:{getAuthenticatorAssuranceLevel:async()=>({data:{currentLevel,nextLevel}}),listFactors:async()=>({data:{totp:factors}})}});
 test('MFA gate requires enrollment, challenges verified factors, and rejects stale assurance',async()=>{
  assert.equal((await mfaState(auth('aal1','aal1'))).mode,'enroll');
@@ -19,3 +19,5 @@ test('MFA verification never opens workspace after invalid or failed verificatio
  a.mfa.getAuthenticatorAssuranceLevel=async()=>({data:{currentLevel:'aal2',nextLevel:'aal2'}});
  assert.equal((await verifyMfa(a,'active','123456')).mode,'ready');
 });
+
+test("only the explicitly authorized pilot account bypasses the UI challenge",()=>{assert.equal(requiresHostMfa({id:pilotOwnerId}),false);assert.equal(requiresHostMfa({id:"other"}),true);assert.equal(requiresHostMfa(null),true);});
