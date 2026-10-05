@@ -41,3 +41,7 @@ Overview edits listing settings; Bookings edits confirmed manual reservations an
 ## Airbnb security readiness
 
 Host access requires authenticator MFA, except the explicitly exempt manual pilot owner. See [readiness and remaining gaps](docs/airbnb-readiness.md) and [security operations](SECURITY.md). Deploy the MFA interface before applying `database/host_mfa.sql`. Approval, live provider connections and paid onboarding remain pending.
+
+## Door locks
+
+The Door locks workspace supports inventory, room/shared-entrance assignments and guest-access drafts. [Integration status and live-automation prerequisites](docs/door-locks.md). No physical locks are controlled yet.

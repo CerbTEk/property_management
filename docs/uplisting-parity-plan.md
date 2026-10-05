@@ -112,3 +112,7 @@ Owned screens now accept single-use pairing codes with short expiry. Browser pai
 ## Manual calendar control update
 
 Listing settings and confirmed manual booking edits are available. Maintenance and owner stays can be blocked and released; the shared database constraint prevents conflicts between bookings and blocks. Blocks are excluded from guest welcomes and active reservation counts. Provider calendar publishing remains pending. Twelve automated checks pass.
+
+## Door-lock planning
+
+Owned lock inventory and room/shared-entrance assignments now support booking access previews with timezone-aware check-in and checkout. A tested server-only TTLock inventory adapter and timed gateway passcode request builder are prepared, without a deployed provider route or credentials. Live passcode provisioning, reconciliation and physical validation remain pending. See [door locks](door-locks.md).

@@ -8,7 +8,7 @@ Goal: replace Uplisting entirely with an owned Treestand PMS. No Uplisting conne
 | --- | --- | --- |
 | Airbnb API program agreements and security review | No direct access claimed | Obtain NDA, partner terms, commercial authorization and approved scopes; complete Airbnb review |
 | Owner authorization and least privilege | Per-owner RLS, same-owner property references, no anonymous host access | Provider OAuth consent, scope mapping and disconnect/revocation before connecting Airbnb |
-| MFA | Authenticator enrollment/challenge gate; database restrictive AAL2 policies on all six host tables, with a user-authorized exception for the pilot owner | Other users complete enrollment; end-to-end authenticator testing and verified recovery procedures; resolve owner exception before claiming Airbnb compliance |
+| MFA | Authenticator enrollment/challenge gate; database restrictive AAL2 policies on all eight host tables, with a user-authorized exception for the pilot owner | Other users complete enrollment; end-to-end authenticator testing and verified recovery procedures; resolve owner exception before claiming Airbnb compliance |
 | Protect guest information | Device endpoint restricted to room content; optional first-name display only during stay; no host/booking payloads | Provider-specific authorization for guest-display use; retention, deletion/export workflows and privacy notices |
 | Secure API use | Server-only privileged credentials; host and device identity separated | Implement only approved endpoints; documented rate limiting, webhook validation and retry/idempotency controls |
 | Vulnerability management | Weekly npm audit workflow, database/MFA tests and build checks | Successful hosted runs; quarterly full infrastructure/app scans, OWASP assessment and vendor reviews |
@@ -30,3 +30,5 @@ Source: https://www.airbnb.com/help/article/3418 . This record is implementation
 The pilot owner exception applies only to the existing manual workspace. There is no Airbnb connection or Airbnb-derived data in this workspace. Any future provider-connected permissions must be evaluated independently against Airbnb requirements; this exception is an open compliance gap.
 
 Launch gate confirmed by the owner: re-enable MFA for the pilot owner after development and before launch. Remove the exception from both `requiresHostMfa` and the restrictive database policies, then verify enrollment and password-only denial. Do not remove only the UI exception.
+
+Door-lock tables also enforce ownership and the development MFA exception. Re-enabling the owner at launch requires a new migration updating all eight restrictive policies, plus removing the frontend exception. Editing an already applied migration file does not change production.
