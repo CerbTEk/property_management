@@ -16,6 +16,7 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  await db.exec(await readFile(new URL('../database/host_mfa.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/door_locks.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/guest_phone_code.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../database/multi_brand_locks.sql',import.meta.url),'utf8'));
  const login=async id=>{await db.exec(`reset role; set role authenticated; select set_config('request.jwt.claims','{"aal":"aal2"}',false); select set_config('request.jwt.claim.sub','${id}',false);`);};
  await login(a);
  const result=await db.query(`insert into ts_properties(owner_id,name,weekday_cents,weekend_cents) values($1,'Pilot room',5600,7000) returning id`,[a]);const p=result.rows[0].id;
@@ -28,6 +29,8 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  }
  await login(a);
  const lock=await db.query(`insert into ts_locks(owner_id,name,provider_lock_id) values($1,'Synthetic room lock','123') returning id`,[a]);
+ await assert.rejects(()=>db.query(`update ts_locks set capabilities='{"online_codes":true}' where id=$1`,[lock.rows[0].id]),e=>e.code==='42501');
+ await assert.rejects(()=>db.query(`insert into ts_lock_connections(id,owner_id) values(gen_random_uuid(),$1)`,[a]),e=>e.code==='42501');
  const route=await db.query(`insert into ts_lock_assignments(owner_id,property_id,lock_id,purpose) values($1,$2,$3,'room') returning id`,[a,p,lock.rows[0].id]);
  await login(b);
  assert.equal((await db.query('select * from ts_locks')).rows.length,0);

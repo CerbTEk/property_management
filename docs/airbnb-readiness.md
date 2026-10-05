@@ -32,3 +32,5 @@ The pilot owner exception applies only to the existing manual workspace. There i
 Launch gate confirmed by the owner: re-enable MFA for the pilot owner after development and before launch. Remove the exception from both `requiresHostMfa` and the restrictive database policies, then verify enrollment and password-only denial. Do not remove only the UI exception.
 
 Door-lock tables also enforce ownership and the development MFA exception. Re-enabling the owner at launch requires a new migration updating all eight restrictive policies, plus removing the frontend exception. Editing an already applied migration file does not change production.
+
+Multi-brand locks adds a ninth owner-scoped host table, `ts_lock_connections`, with the same development MFA exception. Remove the exception in the smart-lock-connect function as well before launch.

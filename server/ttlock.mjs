@@ -37,6 +37,6 @@ export function bookingPasscodeBody({property,booking,locks,assignments,properti
  const plan=guestAccessPlan(property,booking,locks,assignments,{properties,reservations});
  if(plan.issues.length)throw new TTLockError('Guest access needs review before provisioning.','needs_review');
  const lock=plan.locks.find(l=>l.id===lockRecordId);
- if(!lock)throw new TTLockError('Lock is not assigned to this booking.','not_assigned');
+ if(!lock||(lock.provider&&lock.provider!=='ttlock'))throw new TTLockError('Lock is not assigned to this booking.','not_assigned');
  return timedPasscodeBody({clientId,accessToken,lockId:lock.provider_lock_id,code:plan.code,start:plan.start,end:plan.end,now});
 }
