@@ -25,3 +25,7 @@ Before commercial onboarding: organization/staff permissions, provider OAuth and
 ### Browser welcome display
 
 Guest Experience now creates private, revocable screen links for the owned browser player at `/display/`. Apply `database/display_devices.sql` after the base and guest schemas, then deploy `supabase/functions/guest-display/index.ts` with its `handler.mjs` dependency and `verify_jwt=false` (custom hashed device bearer authentication). See [setup and limitations](docs/guest-display.md).
+
+### Android / Google TV pilot
+
+Native TV app source and a GitHub Actions APK build are in [android-tv](android-tv/README.md). Saved private screen credentials, remote controls, HTTPS display fetch and expiry/revocation handling are implemented. This is an unverified physical-device pilot, not a Play Store release.
