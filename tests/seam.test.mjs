@@ -34,3 +34,16 @@ test('Seam booking request preserves phone suffix and refuses incompatible, unkn
  assert.throws(()=>seamBookingCodeBody({...args,lockRecordId:'foreign'}),e=>e.code==='not_assigned');
  assert.match(codeCompatibility({provider:'nuki'}),/six digits/);
 });
+
+test('workspace status verifies real versus sandbox workspaces without exposing provider data',async()=>{
+ for(const is_sandbox of [false,true]){
+  const status=await client(()=>({workspace:{workspace_id:account,is_sandbox,is_suspended:false,secret:'private'}})).status();
+  assert.deepEqual(status,{configured:true,ready:true,mode:is_sandbox?'sandbox':'live'});
+ }
+ assert.equal((await client(()=>({workspace:{workspace_id:account,is_sandbox:false,is_suspended:true}})).status()).ready,false);
+ await assert.rejects(()=>client(()=>({workspace:{workspace_id:account}})).status(),e=>e.code==='invalid_response');
+});
+test('resuming a provider login checks owner and returned connection before exposing a sign-in link',async()=>{
+ assert.equal((await client(()=>({connect_webview:view})).resume(owner,viewId)).url,view.url);
+ for(const change of [{customer_key:account},{connect_webview_id:account},{url:'https://evil.example'}])await assert.rejects(()=>client(()=>({connect_webview:{...view,...change}})).resume(owner,viewId));
+});

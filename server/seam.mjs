@@ -15,13 +15,29 @@ export function seamClient({apiKey,fetcher=fetch}){
   if(!view||!uuid.test(view.connect_webview_id)||view.customer_key!==ownerId)throw new SeamError('Connection ownership could not be verified.','ownership');
   return view;
  }
+ function connectionUrl(view){
+  let url;try{url=new URL(view.url);}catch{throw new SeamError('Invalid connection URL.','invalid_response');}
+  if(url.protocol!=='https:'||url.hostname!=='connect.getseam.com')throw new SeamError('Invalid connection URL.','invalid_response');
+  return url.toString();
+ }
  return {
+  async status(){
+   const {workspace}=await request('workspaces/get');
+   if(!workspace||!uuid.test(workspace.workspace_id)||typeof workspace.is_sandbox!=='boolean'||typeof workspace.is_suspended!=='boolean')throw new SeamError('Workspace could not be verified.','invalid_response');
+   return {configured:true,ready:!workspace.is_suspended,mode:workspace.is_sandbox?'sandbox':'live'};
+  },
+  async resume(ownerId,viewId){
+   if(!uuid.test(ownerId)||!uuid.test(viewId))throw new SeamError('Invalid connection.','ownership');
+   const {connect_webview}=await request('connect_webviews/get',{connect_webview_id:viewId});
+   const view=checkView(connect_webview,ownerId);
+   if(view.connect_webview_id!==viewId)throw new SeamError('Connection mismatch.','ownership');
+   return {id:viewId,url:connectionUrl(view),login_successful:view.login_successful===true};
+  },
   async connect(ownerId){
    if(!uuid.test(ownerId))throw new SeamError('Invalid owner.','ownership');
    const {connect_webview}=await request('connect_webviews/create',{customer_key:ownerId,accepted_capabilities:['lock'],accepted_providers:seamProviders,any_provider_allowed:false,automatically_manage_new_devices:true,wait_for_device_creation:true,custom_redirect_url:'https://treestand-manager.webflow.io/app/'},'POST');
-   const view=checkView(connect_webview,ownerId);let url;try{url=new URL(view.url);}catch{throw new SeamError('Invalid connection URL.','invalid_response');}
-   if(url.protocol!=='https:'||url.hostname!=='connect.getseam.com')throw new SeamError('Invalid connection URL.','invalid_response');
-   return {id:view.connect_webview_id,url:url.toString()};
+   const view=checkView(connect_webview,ownerId);
+   return {id:view.connect_webview_id,url:connectionUrl(view)};
   },
   async inventory(ownerId,viewId){
    if(!uuid.test(ownerId)||!uuid.test(viewId))throw new SeamError('Invalid connection.','ownership');
