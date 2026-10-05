@@ -15,6 +15,7 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  await db.exec(await readFile(new URL('../database/calendar_controls.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/host_mfa.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/door_locks.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../database/guest_phone_code.sql',import.meta.url),'utf8'));
  const login=async id=>{await db.exec(`reset role; set role authenticated; select set_config('request.jwt.claims','{"aal":"aal2"}',false); select set_config('request.jwt.claim.sub','${id}',false);`);};
  await login(a);
  const result=await db.query(`insert into ts_properties(owner_id,name,weekday_cents,weekend_cents) values($1,'Pilot room',5600,7000) returning id`,[a]);const p=result.rows[0].id;
@@ -46,6 +47,9 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  const device=await db.query(`insert into ts_display_devices(owner_id,property_id,name,token_hash) values($1,$2,'Synthetic TV',$3) returning id`,[a,p,'a'.repeat(64)]);
  await assert.rejects(()=>db.query(`update ts_display_devices set token_hash=$1 where id=$2`,['b'.repeat(64),device.rows[0].id]),e=>e.code==='42501');
  const first=await book(a,'2026-10-05','2026-10-07');
+ await db.query(`update ts_reservations set guest_phone_last4='0042' where id=$1`,[first.rows[0].id]);
+ assert.equal((await db.query(`select guest_phone_last4 from ts_reservations where id=$1`,[first.rows[0].id])).rows[0].guest_phone_last4,'0042');
+ await assert.rejects(()=>db.query(`update ts_reservations set guest_phone_last4='12345' where id=$1`,[first.rows[0].id]),e=>e.code==='23514');
  await assert.rejects(()=>book(a,'2026-10-06','2026-10-08'),e=>e.code==='23P01');
  const second=await book(a,'2026-10-07','2026-10-09');
  await assert.rejects(()=>db.query(`update ts_reservations set arrival='2026-10-06' where id=$1`,[second.rows[0].id]),e=>e.code==='23P01');

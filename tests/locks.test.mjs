@@ -1,9 +1,10 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {phoneLastFour} from '../src/phone-code.mjs';
 import {localInstant,guestAccessPlan} from '../src/lock-model.mjs';
-import {timedPasscodeBody,ttlockInventory} from '../server/ttlock.mjs';
+import {timedPasscodeBody,ttlockInventory,bookingPasscodeBody} from '../server/ttlock.mjs';
 const property={id:'room-a',owner_id:'owner',timezone:'America/New_York',check_in:'15:00:00',check_out:'11:00:00'};
-const booking={property_id:'room-a',owner_id:'owner',arrival:'2026-10-05',departure:'2026-10-07',status:'confirmed',kind:'booking'};
+const booking={id:'booking-a',guest_phone_last4:'0042',property_id:'room-a',owner_id:'owner',arrival:'2026-10-05',departure:'2026-10-07',status:'confirmed',kind:'booking'};
 test('access windows follow listing local time, DST, and reject ambiguous/missing times',()=>{
  assert.equal(new Date(localInstant('2026-10-05','15:00','America/New_York')).toISOString(),'2026-10-05T19:00:00.000Z');
  assert.equal(new Date(localInstant('2026-11-02','11:00','America/New_York')).toISOString(),'2026-11-02T16:00:00.000Z');
@@ -31,4 +32,33 @@ test('TTLock inventory strips sensitive provider fields and fails closed on prov
  const locks=await client.locks();assert.equal(calls,1);assert.equal(locks[0].battery,70);assert.equal(locks[0].has_gateway,true);assert.equal('lockData' in locks[0],false);assert.equal('lockMac' in locks[0],false);
  const error=ttlockInventory({clientId:'synthetic',accessToken:'synthetic',fetcher:async()=>({ok:true,json:async()=>({errcode:-1,errmsg:'secret provider info'})})});await assert.rejects(()=>error.locks(),e=>e.code==='provider_error'&&!e.message.includes('secret'));
  const absent=ttlockInventory({});await assert.rejects(()=>absent.locks(),/not configured/);
+});
+
+test('phone code preserves leading zeroes, accepts formatting, and rejects extensions/incomplete numbers',()=>{
+ assert.equal(phoneLastFour('+1 (919) 555-0042'),'0042');
+ assert.equal(phoneLastFour('020 7946 0017'),'0017');
+ assert.equal(phoneLastFour(''),null);
+ assert.throws(()=>phoneLastFour('0042'),/complete/);
+ assert.throws(()=>phoneLastFour('9195550042 ext 17'),/extension/);
+});
+test('same phone ending on a shared lock blocks overlapping access, but allows separate rooms or turnover',()=>{
+ const secondProperty={...property,id:'room-b'};
+ const locks=[{id:'front',owner_id:'owner',enabled:true}];
+ const assignments=[{owner_id:'owner',property_id:'room-a',lock_id:'front',purpose:'entrance'},{owner_id:'owner',property_id:'room-b',lock_id:'front',purpose:'entrance'}];
+ const other={...booking,id:'booking-b',property_id:'room-b'};
+ const context={properties:[property,secondProperty],reservations:[booking,other]};
+ const p=guestAccessPlan(property,booking,locks,assignments,context);assert.equal(p.code,'0042');assert.equal(p.status,'needs_review');assert.equal(p.conflicts.length,1);
+ assert.equal(guestAccessPlan(property,booking,locks,assignments,{...context,reservations:[{...other,arrival:'2026-10-07',departure:'2026-10-09'}]}).status,'draft');
+ assert.equal(guestAccessPlan(property,booking,locks,assignments,{...context,reservations:[{...other,status:'cancelled'}]}).conflicts.length,0);
+ assert.equal(guestAccessPlan(property,booking,locks,assignments.slice(0,1),context).conflicts.length,0);
+ assert.equal(guestAccessPlan(property,{...booking,guest_phone_last4:null},locks,assignments).code,null);
+ assert.equal(guestAccessPlan(property,{...booking,guest_phone_last4:null},locks,assignments).status,'needs_review');
+});
+
+test('guest request builder derives phone suffix and rejects missing phone or unassigned lock',()=>{
+ const locks=[{id:'room-lock',owner_id:'owner',enabled:true,provider_lock_id:'123'}],assignments=[{owner_id:'owner',property_id:'room-a',lock_id:'room-lock',purpose:'room'}];
+ const args={property,booking,locks,assignments,properties:[property],reservations:[booking],lockRecordId:'room-lock',clientId:'synthetic-client',accessToken:'synthetic-token',now:1};
+ assert.equal(bookingPasscodeBody(args).get('keyboardPwd'),'0042');
+ assert.throws(()=>bookingPasscodeBody({...args,booking:{...booking,guest_phone_last4:null}}),e=>e.code==='needs_review');
+ assert.throws(()=>bookingPasscodeBody({...args,lockRecordId:'foreign'}),e=>e.code==='not_assigned');
 });

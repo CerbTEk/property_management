@@ -33,4 +33,12 @@ Sources checked October 5, 2026:
 
 Apply `database/door_locks.sql` before the frontend release. Both tables enforce authenticated ownership, same-owner composite foreign keys and restrictive MFA, retaining the owner's explicit development exception. Assignments can be removed by their owner; inventory is retained and can be excluded from plans.
 
-Nineteen automated checks pass across the PMS. Door-lock checks cover timezone conversion, DST ambiguity/gaps, ownership, assignment removal, password-only denial, cancelled/block exclusions and provider request/error handling. The frontend production build passes. No live provider or physical-lock test has occurred.
+Twenty-two automated checks pass across the PMS. Door-lock checks cover timezone conversion, DST ambiguity/gaps, ownership, assignment removal, password-only denial, cancelled/block exclusions and provider request/error handling. The frontend production build passes. No live provider or physical-lock test has occurred.
+
+## Guest phone code rule
+
+The owner-selected guest code is exactly the last four digits of the guest phone number, preserving leading zeros. New manual bookings accept a complete phone number and retain only the four-digit suffix; edits can correct that suffix or clear it. The full number is not saved by this feature. Existing bookings without a suffix require phone information before their access plan is ready.
+
+The preview flags matching codes on the same assigned lock when confirmed stays overlap in actual time, including shared entrances across listings. It does not substitute a random code. Cancelled bookings and nonoverlapping checkout/check-in periods do not conflict. This is a draft conflict check; provider reconciliation with existing physical passcodes remains required before live provisioning.
+
+The server-only booking request builder recomputes the rule from current booking/assignment data, rejects review issues and unassigned locks, and derives the code itself. It sends no request. Future execution must load this data under the authenticated owner, verify provider ownership/compatibility and reconcile lock state. Guest codes are not sent to welcome screens.

@@ -1,3 +1,4 @@
+import {guestAccessPlan} from '../src/lock-model.mjs';
 // Server-only building blocks. No HTTP route, credentials or live execution configured.
 // Never import this module into the browser. Never log request bodies or provider responses.
 export class TTLockError extends Error{constructor(message,code){super(message);this.code=code;}}
@@ -28,4 +29,14 @@ export function ttlockInventory({clientId,accessToken,fetcher=fetch,now=Date.now
   async locks(){return (await list('lock/list')).map(l=>({provider_lock_id:String(l.lockId),name:String(l.lockAlias||l.lockName||'TTLock'),battery:Number.isInteger(l.electricQuantity)?l.electricQuantity:null,passcode_version:l.keyboardPwdVersion,has_gateway:l.hasGateway===1}));},
   async gateways(){return (await list('gateway/list')).map(g=>({gateway_id:String(g.gatewayId),online:g.isOnline===1}));}
  };
+}
+
+// Future provisioning must use current server-loaded booking/assignment data.
+// The caller cannot choose a guest passcode or a foreign lock ID.
+export function bookingPasscodeBody({property,booking,locks,assignments,properties,reservations,lockRecordId,clientId,accessToken,now=Date.now()}){
+ const plan=guestAccessPlan(property,booking,locks,assignments,{properties,reservations});
+ if(plan.issues.length)throw new TTLockError('Guest access needs review before provisioning.','needs_review');
+ const lock=plan.locks.find(l=>l.id===lockRecordId);
+ if(!lock)throw new TTLockError('Lock is not assigned to this booking.','not_assigned');
+ return timedPasscodeBody({clientId,accessToken,lockId:lock.provider_lock_id,code:plan.code,start:plan.start,end:plan.end,now});
 }
