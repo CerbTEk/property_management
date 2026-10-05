@@ -108,3 +108,7 @@ Optional first-name greetings now follow confirmed stays saved in Treestand, usi
 ## One-time TV pairing
 
 Owned screens now accept single-use pairing codes with short expiry. Browser pairing is live after deployment; Android app source supports the same exchange but its APK build is still waiting for a GitHub runner. No WelcomeScreen integration has been removed.
+
+## Manual calendar control update
+
+Listing settings and confirmed manual booking edits are available. Maintenance and owner stays can be blocked and released; the shared database constraint prevents conflicts between bookings and blocks. Blocks are excluded from guest welcomes and active reservation counts. Provider calendar publishing remains pending. Twelve automated checks pass.

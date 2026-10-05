@@ -12,6 +12,7 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  await db.exec(await readFile(new URL('../database/display_devices.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/display_personalization.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/display_pairing.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../database/calendar_controls.sql',import.meta.url),'utf8'));
  const login=async id=>{await db.exec(`reset role; set role authenticated; select set_config('request.jwt.claim.sub','${id}',false);`);};
  await login(a);
  const result=await db.query(`insert into ts_properties(owner_id,name,weekday_cents,weekend_cents) values($1,'Pilot room',5600,7000) returning id`,[a]);const p=result.rows[0].id;
@@ -21,7 +22,13 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  await assert.rejects(()=>db.query(`update ts_display_devices set token_hash=$1 where id=$2`,['b'.repeat(64),device.rows[0].id]),e=>e.code==='42501');
  const first=await book(a,'2026-10-05','2026-10-07');
  await assert.rejects(()=>book(a,'2026-10-06','2026-10-08'),e=>e.code==='23P01');
- await book(a,'2026-10-07','2026-10-09');
+ const second=await book(a,'2026-10-07','2026-10-09');
+ await assert.rejects(()=>db.query(`update ts_reservations set arrival='2026-10-06' where id=$1`,[second.rows[0].id]),e=>e.code==='23P01');
+ const block=await db.query(`insert into ts_reservations(owner_id,property_id,guest,arrival,departure,guests,kind,status) values($1,$2,'Maintenance','2026-10-10','2026-10-12',1,'block','blocked') returning id`,[a,p]);
+ await assert.rejects(()=>book(a,'2026-10-11','2026-10-13'),e=>e.code==='23P01');
+ await assert.rejects(()=>db.query(`insert into ts_reservations(owner_id,property_id,guest,arrival,departure,guests,kind,status) values($1,$2,'Owner stay','2026-10-06','2026-10-07',1,'block','blocked')`,[a,p]),e=>e.code==='23P01');
+ await db.query(`update ts_reservations set status='cancelled' where id=$1`,[block.rows[0].id]);
+ await book(a,'2026-10-10','2026-10-12');
  await assert.rejects(()=>book(a,'2026-10-10','2026-10-11',3),/Maximum occupancy/);
  await login(b);
  assert.equal((await db.query('select * from ts_display_devices')).rows.length,0);

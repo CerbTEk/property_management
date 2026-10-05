@@ -5,5 +5,5 @@ export const money=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'
 export function calendarDays(month,reservations=[],propertyId=''){
  if(!/^\d{4}-\d{2}$/.test(month)||!validDay(month+'-01'))throw Error('Use a valid calendar month.');
  const first=new Date(month+'-01T12:00:00Z'),count=new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth()+1,0)).getUTCDate();
- return {padding:first.getUTCDay(),days:Array.from({length:count},(_,i)=>{const day=month+'-'+String(i+1).padStart(2,'0');return {day,bookings:reservations.filter(r=>r.status==='confirmed'&&(!propertyId||r.property_id===propertyId)&&r.arrival<=day&&r.departure>day)};})};
+ return {padding:first.getUTCDay(),days:Array.from({length:count},(_,i)=>{const day=month+'-'+String(i+1).padStart(2,'0');return {day,bookings:reservations.filter(r=>['confirmed','blocked'].includes(r.status)&&(!propertyId||r.property_id===propertyId)&&r.arrival<=day&&r.departure>day)};})};
 }

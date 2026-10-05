@@ -33,3 +33,7 @@ Native TV app source and a GitHub Actions APK build are in [android-tv](android-
 Guest Experience also offers optional first-name personalization during confirmed stays, using listing-local arrival/check-in and departure/checkout times. It is off by default. Ten automated checks cover access, timing, turnover, daylight-saving changes and existing booking/pricing logic.
 
 One-time screen pairing codes are available in Guest Experience and the browser player. Apply `database/display_pairing.sql` after the device schema and redeploy the shared Edge Function. The Android source supports the same pairing flow; installable APK and physical TV verification are pending.
+
+### Calendar controls
+
+Overview edits listing settings; Bookings edits confirmed manual reservations and blocks/releases unavailable nights. Apply `database/calendar_controls.sql` after the base schema. A shared database exclusion constraint protects bookings and blocks against overlap. These changes are local to Treestand until approved channel publishing is connected. See [calendar controls](docs/calendar-controls.md).
