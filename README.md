@@ -37,3 +37,7 @@ One-time screen pairing codes are available in Guest Experience and the browser 
 ### Calendar controls
 
 Overview edits listing settings; Bookings edits confirmed manual reservations and blocks/releases unavailable nights. Apply `database/calendar_controls.sql` after the base schema. A shared database exclusion constraint protects bookings and blocks against overlap. These changes are local to Treestand until approved channel publishing is connected. See [calendar controls](docs/calendar-controls.md).
+
+## Airbnb security readiness
+
+Host access requires authenticator MFA. See [readiness and remaining gaps](docs/airbnb-readiness.md) and [security operations](SECURITY.md). Deploy the MFA interface before applying `database/host_mfa.sql`. Approval, live provider connections and paid onboarding remain pending.

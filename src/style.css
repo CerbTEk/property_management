@@ -12,3 +12,5 @@
 .pairing-code{font-size:1.6rem;letter-spacing:.12em;font-weight:700}.tv-pair-form{max-width:36rem}.tv-pair-form input{font-size:1.4rem}.tv-pair-form label{color:white}
 
 .calendar-block{background:#e4e7eb;border-left:3px solid #697584;color:#27364a}.reservation-editor{min-width:240px;margin-top:1rem;padding:1rem;background:#f4f6f9;border-radius:.5rem}.listing>div{min-width:0;flex:1}
+
+.mfa-qr{display:block;width:240px;max-width:100%;background:white;margin:20px 0}.mfa-secret{display:block;overflow-wrap:anywhere;padding:16px;background:#fff;color:#152b20}
