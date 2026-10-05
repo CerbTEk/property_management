@@ -1,6 +1,7 @@
 import {createClient} from '@supabase/supabase-js';
-const url=import.meta.env.VITE_SUPABASE_URL;
-const key=import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+import {publicConnection} from './public-config.js';
+const url=import.meta.env.VITE_SUPABASE_URL || publicConnection.url;
+const key=import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || publicConnection.key;
 // A service-role JWT must never be accepted as browser configuration.
 let privileged=false;
 try{if(key?.split('.').length===3)privileged=JSON.parse(atob(key.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).role==='service_role';}catch{}
