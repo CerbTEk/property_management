@@ -1,0 +1,98 @@
+# Uplisting coverage and Treestand delivery plan
+
+Reviewed October 5, 2026. Scope: publicly documented Uplisting offerings, add-ons, beta features and integration categories; compared with the actual Treestand source and deployment. This is a requirements audit, not a claim that parity is implemented or that every provider will approve access. Gill confirmed successful Treestand sign-in on October 5. His Uplisting account-specific enabled features and workflow settings still need an inventory/export.
+
+## Delivery order
+
+P0: replace Gill's two-listing workflow without losing bookings, prices, WelcomeScreen updates or timed door access. P1: broader host operations and guest experience. P2: commercial property-manager features and developer ecosystem. Roadmap-only Uplisting products are tracked separately.
+
+Status: Partial means local functionality exists but not complete Uplisting parity. Missing means no working implementation. Partner-dependent means implementation also requires confirmed provider capabilities, permission, credentials and terms. All statuses below are as of this review.
+
+| Capability | Treestand today | Required implementation / dependency | Priority |
+|---|---|---|---|
+| Host login and independent accounts | Implemented; Gill confirmed login | Verify account recovery, logout, session expiry and cross-account behavior in the live app | P0 |
+| Property and individual-room management | Partial: name, rates, occupancy, stay rules, timezone and check-in/out | Edit full listing content, amenities, photos, house rules and channel mappings | P0 |
+| Airbnb / Booking.com / Vrbo channel manager | Missing; partner-dependent | Hospitable application is submitted, not approved. Confirm each channel's reservation, pricing, availability, restrictions and messaging scopes; implement adapters, refresh, reconcile and disconnect | P0 Airbnb; P1 others |
+| Booking import, modifications and cancellations | Partial: manual create/cancel only | Preserve external IDs, revisions, status, financial details, timezone and cancellation events; support safe amendments | P0 |
+| Multi-calendar and bulk edits | Partial: month view and listing filter | Listing-row calendar, reservation detail, bulk rates/restrictions, channel rates and sync-state display | P0 |
+| iCal connections | Missing | Authenticated feed administration, validated import/export, refresh state and duplicate detection. iCal is not price or messaging parity | P1 |
+| Unavailable dates / owner stays | Missing | Blocks separate from reservations, editable reasons and provider propagation | P0 |
+| Minimum stay, booking window, advance notice | Partial: base minimum stay | Date/channel rules, booking horizon and lead-time validation | P0 |
+| Closed arrival/departure, buffer nights, gap-night rules | Missing | Day-of-week and date overrides; explicit precedence; reflect channel-specific limitations | P1 |
+| Linked listings | Missing | Shared inventory dependencies that block conflicting parent/child listings atomically | P1 |
+| Multi-unit inventory | Missing | Unit counts, allocation, reassignment and channel inventory reconciliation; separate from two independently priced rooms | P2 |
+| Base rates and spot prices | Partial: weekday/weekend and one-day overrides | Date ranges, bulk edits, history and authoritative provider acknowledgment | P0 |
+| Channel markups / smart rates | Partial: one non-negative listing markup | Channel-specific markup/markdown, commission basis, rounding and displayed channel rate | P0 |
+| Extra guest fees, cleaning fees, discounts and taxes | Missing | Itemized quote snapshots and configurable fee/tax rules; channel-specific applicability | P1 |
+| Last-minute pricing rules and dynamic-pricing connections | Missing; partner-dependent for external services | Lead-time rules, precedence, audit history and approved external rate feed | P1 |
+| Unified inbox | Missing: saved templates are not an inbox | Booking-linked threads, channel identity, incoming events, attachments where supported, unread/assignment state and send receipts | P0 |
+| Scheduled guest messaging and enquiry responder | Missing | Event/time rules, variables, conditions, deduplication, cancellation suppression, retries and delivery audit | P0 |
+| AI messaging / knowledge center | Missing | Property-scoped manuals/Q&A, grounded drafts, review, feedback and measured confidence. Automatic-send behavior must be explicitly configured and validated | P1 |
+| Two-way SMS and email | Missing; provider-dependent | Dedicated delivery routes, inbound handling, consent, opt-out and delivery/cost tracking | P1 |
+| Automated reviews and review requests | Missing; channel-dependent | Templates, eligibility windows, owner approval options and supported review API actions | P1 |
+| Timed TTLock codes | Missing; provider-dependent | Account authorization, gateway discovery, lock mapping, unique per-reservation code lifecycle, buffers, changes, cancellation and checkout expiry | P0 |
+| Shared entrance and room-specific locks | Missing | Many-to-many property/lock mapping and concurrent guest schedules; cancellation must preserve other guests' access | P0 |
+| Lock health and other lock brands | Missing; device/provider-dependent | Online/battery/status telemetry where supported, unsynced alerts, revoke/disconnect; individual brand adapters require validation | P0 health; P2 brands |
+| WelcomeScreen feed | Missing; provider-dependent | Listing/device mapping and minimum guest/stay data; create, change, cancel and checkout updates; monitor acknowledgments | P0 |
+| Cleaning scheduler and action list | Missing | Turnover tasks from booking events, cleaner assignment, permissions, notifications, completion and reassignment; ad hoc work without dummy bookings | P1 |
+| Direct booking website and embedded booking widget | Missing: public landing page is not a booking engine | Property pages, search/availability, quotes, checkout holds, confirmed payment events, booking creation and guest confirmations | P1 |
+| Website customization and marketing | Missing | Host branding/domain, content editing, responsive templates, analytics and conversion events; not a clone of a particular builder | P2 |
+| Guest payment links and installment plans | Missing; payment-provider-dependent | Host-owned payment account, schedules, due balances, receipts, failure handling, refunds and reconciliation | P1 |
+| Security deposits / Protect equivalent | Missing; payment-provider-dependent | Consent, authorize/capture/release states, supported hold periods, claims evidence and dispute handling; no guaranteed damage coverage | P1 |
+| Electronic rental agreements | Missing | Versioned per-property/channel terms, signature evidence, signed PDF, reminders and restricted document access | P1 |
+| Guest identity verification | Missing; specialist-provider-dependent | Hosted verification flow, result webhooks, consent and retention; do not store raw identity documents by default | P1 |
+| Upsells | Missing; Uplisting documents beta availability | Property offers, eligibility, guest checkout, order status, fulfillment/refunds and separate revenue tracking | P2 |
+| Staff, cleaners and client/owner portals | Missing: current access is individual owner only | Organization memberships, invitations, property-scoped roles and restricted owner calendar/access | P1 staff; P2 clients |
+| Owner statements and management fees | Missing | Expense ledger, formulas, attribution across months, invoice/payout statements, review/export and auditability | P2 |
+| Reports and performance insights | Partial: basic counts and JSON backup | Booking/guest/occupancy/revenue reports, ADR, filters, financial breakdowns, CSV exports and saved reports | P1 |
+| REST API, webhooks and MCP access | Missing | Scoped authorization, authenticated events, rate limits, revocation, docs and tenant-safe tools. Uplisting's API alone is not an independent replacement | P2 |
+| Mobile experience | Partial: responsive web UI | Test phone workflows; installable app and notifications as needed. Native app parity is not established from the empty public mobile help category | P1 |
+| Onboarding, migration and customer support | Missing as a commercial service | Import validation, documentation, support queue, incident response, backups/recovery and honest support coverage | P0 migration; P2 service |
+| Pro website / multilingual websites | Uplisting pricing labels these coming soon | Optional separate roadmap; do not count as current feature parity | Future |
+
+## Integration ecosystem boundary
+
+Gill requested an owned WelcomeScreen-style module as part of Treestand on October 5. Screenshots show display configuration (personalized welcome, media, location/weather, branding, language, check-in/out, operating hours, WiFi/contact, QR links and recommendations), TV management, guidebooks, store/monetization, AI messaging, guest lists, team users and PMS sync for listings/reservations/chat. Existing Uplisting integration is shown active. No screenshots, WiFi values, addresses or guest details belong in this public repository. Build a Guest Experience workspace plus a separate device-paired TV player and mobile guidebook; linking out to WelcomeScreen is not equivalent. TV platforms/player support, assets/licenses, weather, commerce and AI require their own verification. Do not disconnect the existing integration until the replacement player passes actual-device testing.
+
+Uplisting lists many third-party integrations. Matching every logo requires separate technical and commercial validation, not just matching the core feature list. Track adapters by category: channels/distribution; dynamic pricing; locks/access; welcome displays and guidebooks; cleaning/maintenance; bookkeeping/owner payouts; identity, screening and damage protection; guest WiFi/marketing; analytics/ads; guest communications/AI; automation connectors; concierge/upsells and EV charging. Initial adapters are Airbnb through an approved route, WelcomeScreen and TTLock. Additional providers are evaluated when requested or required by a customer. Insurance/damage coverage, cleaner marketplaces and human support are services, not capabilities we can reproduce solely in application code.
+
+## Acceptance gates before replacing Uplisting
+
+1. Import both actual listings, future reservations, blocks, current rates, rules, templates and lock mappings. Compare counts and samples; preserve an export and rollback plan.
+2. Exercise new booking, amendment, cancellation, back-to-back stays and simultaneous bookings. Duplicate/out-of-order events must not double-book, resend messages or create extra lock codes. Reconciliation must identify missing events.
+3. Verify channel rate/availability writes are acknowledged and match the intended price, including markup and restrictions. Check local calendar and OTA calendar against each other.
+4. Verify WelcomeScreen on actual devices for both rooms after create/change/cancel/checkout. Minimize guest data and restrict access.
+5. Verify a timed code on a designated test lock with the WiFi gateway, room assignment and shared entrance; test timezone/DST, early/late buffers, expiry, cancellation, offline recovery and overlapping guests. Choose one automation writer per production lock during cutover.
+6. Confirm guest message scheduling, delivery, suppression after cancellation, and room-correct access instructions. No extra guest sends during import or replay.
+7. Validate isolation, recovery, audit history and failure alerts. Successful sign-in alone does not validate authorization or all operational workflows.
+8. Observe a complete stay/turnover cycle, reconcile provider bills and approve the cutover. Keep Uplisting active until the gates pass; cancellation remains a separate action.
+
+## Architecture needed for parity
+
+The existing React client and Supabase tables are a foundation. Add an authenticated server integration layer, server-held provider credentials, event journal, durable outbox/jobs, signatures/replay protection, external-ID mappings and reconciliation. Model availability blocks and resource inventory before linked/multi-unit expansion. Snapshot booking prices rather than recomputing historical revenue from current rates. Add organization/property membership before staff/client access; extend RLS and synthetic cross-tenant tests with each feature. Payments and identity checks use hosted provider flows. External operations require explicit success states and visible failure handling.
+
+## Cost gate
+
+Gill's stated Uplisting cost is about $130/month, not a verified current invoice. Calculate savings against additional database compute, Webflow hosting/workspace costs, booking connectivity, SMS/email, AI, lock-provider fees, verification and payment processing. Provider terms and account-specific billing are unconfirmed. Do not promise full ecosystem cost coverage yet.
+
+## Source notes and ambiguities
+
+Public sources describe available capabilities, not Gill's purchased add-ons. Uplisting's general feature page says no booking commission while its current pricing page also offers commission-based plans. Its smart-lock help article and current pricing page show different charging structures. AI help includes both review-only language and confidence-based automatic sending. Confirm account-specific terms and behavior rather than treating those contradictions as requirements. Pricing labels Pro and multilingual websites coming soon; upsells and AI documentation describe beta status.
+
+## Primary sources
+
+- Feature overview: https://www.uplisting.io/features
+- Current plans/add-ons/roadmap: https://www.uplisting.io/pricing
+- Integrations directory: https://www.uplisting.io/integrations
+- Availability: https://support.uplisting.io/en/category/availability-settings-1hh1s00/
+- Pricing rules: https://support.uplisting.io/en/category/pricing-settings-1s4ukk3/
+- Communication: https://support.uplisting.io/en/category/messaging-70eqrw/
+- AI details: https://support.uplisting.io/en/article/ai-messaging-mrjtkg/
+- Operations: https://support.uplisting.io/en/category/operations-y639hn/
+- Smart locks: https://support.uplisting.io/en/article/automate-guest-access-with-uplisting-smart-locks-16g6006/
+- Multi-units: https://support.uplisting.io/en/article/multi-units-hb3deo/
+- Reporting: https://support.uplisting.io/en/category/reports-qjb5tr/
+- Advanced reporting: https://support.uplisting.io/en/article/kick-start-guide-to-advanced-reporting-thuzov/
+- Upsells beta: https://support.uplisting.io/en/article/upsells-feature-faq-pp8g26/
+- API/webhooks: https://support.uplisting.io/en/article/api-webhooks-vzlowi/
+- MCP: https://support.uplisting.io/en/article/uplisting-mcp-server-silb1i/
