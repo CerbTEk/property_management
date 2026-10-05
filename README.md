@@ -21,3 +21,7 @@ Guest Experience now includes owner-only per-listing welcome display settings, h
 Hospitable Connect application submitted October 5, 2026, with logo hosting disclosed as pending. Review may take up to five business days; submission is not approval. Requested bookings, calendar pricing/availability and templated messaging require confirmed commercial terms and credentials. WelcomeScreen and TTLock remain disconnected. No guest messages, price changes, passcodes or unlock requests are sent. Runtime provider credentials will require a server-side integration worker; this browser frontend does not store them.
 
 Before commercial onboarding: organization/staff permissions, provider OAuth and revocation, webhook validation/idempotency, retries/reconciliation, timed guest-code lifecycle, billing, notifications and live pilot testing are required. Keep Uplisting active until validated migration. This is a buildable application foundation, not a production-ready replacement.
+
+### Browser welcome display
+
+Guest Experience now creates private, revocable screen links for the owned browser player at `/display/`. Apply `database/display_devices.sql` after the base and guest schemas, then deploy `supabase/functions/guest-display/index.ts` with its `handler.mjs` dependency and `verify_jwt=false` (custom hashed device bearer authentication). See [setup and limitations](docs/guest-display.md).

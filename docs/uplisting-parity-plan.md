@@ -96,3 +96,7 @@ Public sources describe available capabilities, not Gill's purchased add-ons. Up
 - Upsells beta: https://support.uplisting.io/en/article/upsells-feature-faq-pp8g26/
 - API/webhooks: https://support.uplisting.io/en/article/api-webhooks-vzlowi/
 - MCP: https://support.uplisting.io/en/article/uplisting-mcp-server-silb1i/
+
+## Browser guest display update
+
+An owned browser player, named private screen links, 90-day expiry and permanent revocation are implemented. Screens refresh saved room welcome/guide/contact content each minute and clear on request failure. This is a generic guest greeting; booking-timed personalization, physical TV validation and native app packaging remain pending. See [guest display setup](guest-display.md).

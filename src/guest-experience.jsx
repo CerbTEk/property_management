@@ -1,12 +1,13 @@
 import React,{useState} from 'react';
 import {db} from './backend';
+import {DisplayDevices} from './display-devices';
 const defaults={title:'Welcome, {{guest}}',welcome:'Make yourself at home. We hope you enjoy your stay.',guidebook:'',recommendations:'',contact:''};
 export function GuestExperience({properties,reservations,displays,user,onSaved}){
  const [propertyId,setPropertyId]=useState(properties[0]?.id||'');
  const property=properties.find(p=>p.id===propertyId);
  if(!property)return <section className="panel"><h2>Guest Experience</h2><p>Add a listing in Overview to create its welcome display and guidebook.</p></section>;
  const saved=displays.find(d=>d.property_id===propertyId);
- return <><section className="panel"><h2>Guest Experience</h2><p>Create your own welcome display and house guide alongside your bookings.</p><label>Listing<select value={propertyId} onChange={e=>setPropertyId(e.target.value)}>{properties.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><p className="notice">Host preview only. TV pairing, media, Wi-Fi sharing, weather, store and AI guest chat are planned.</p></section><DisplayEditor key={propertyId} property={property} saved={saved} bookings={reservations.filter(r=>r.property_id===propertyId&&r.status==='confirmed')} user={user} onSaved={onSaved}/></>;
+ return <><section className="panel"><h2>Guest Experience</h2><p>Create your own welcome display and house guide alongside your bookings.</p><label>Listing<select value={propertyId} onChange={e=>setPropertyId(e.target.value)}>{properties.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><p className="notice">Browser TV display available below. Media, Wi-Fi sharing, weather, store and AI guest chat are planned.</p></section><DisplayEditor key={propertyId} property={property} saved={saved} bookings={reservations.filter(r=>r.property_id===propertyId&&r.status==='confirmed')} user={user} onSaved={onSaved}/><DisplayDevices key={propertyId+'screens'} property={property} user={user}/></>;
 }
 function DisplayEditor({property,saved,bookings,user,onSaved}){
  const [draft,setDraft]=useState({...defaults,...saved}),[bookingId,setBookingId]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState('');
