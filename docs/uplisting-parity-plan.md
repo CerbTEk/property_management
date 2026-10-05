@@ -100,3 +100,7 @@ Public sources describe available capabilities, not Gill's purchased add-ons. Up
 ## Browser guest display update
 
 An owned browser player, named private screen links, 90-day expiry and permanent revocation are implemented. Screens refresh saved room welcome/guide/contact content each minute and clear on request failure. This is a generic guest greeting; booking-timed personalization, physical TV validation and native app packaging remain pending. See [guest display setup](guest-display.md).
+
+## Scheduled welcome personalization
+
+Optional first-name greetings now follow confirmed stays saved in Treestand, using the listing timezone and check-in/checkout times. Generic greetings appear outside the stay or for ambiguous records. Ten automated checks pass, including daylight-saving and same-day turnover. The Airbnb import and physical Android TV installation remain pending.

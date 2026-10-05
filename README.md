@@ -29,3 +29,5 @@ Guest Experience now creates private, revocable screen links for the owned brows
 ### Android / Google TV pilot
 
 Native TV app source and a GitHub Actions APK build are in [android-tv](android-tv/README.md). Saved private screen credentials, remote controls, HTTPS display fetch and expiry/revocation handling are implemented. This is an unverified physical-device pilot, not a Play Store release.
+
+Guest Experience also offers optional first-name personalization during confirmed stays, using listing-local arrival/check-in and departure/checkout times. It is off by default. Ten automated checks cover access, timing, turnover, daylight-saving changes and existing booking/pricing logic.

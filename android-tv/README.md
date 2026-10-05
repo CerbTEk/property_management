@@ -4,7 +4,7 @@ A native Java app for Android TV / Google TV, Android 6 or later. Shows the same
 
 Create and save the room's content in Treestand Guest Experience. Create a named screen link. Install the pilot APK on your Android TV device, open Treestand TV from its launcher, and enter the private link once. The app stores the device credential in app-private preferences, with Android backup disabled. Reopening the app restores that connection. Screen settings lets you disconnect; revoke the screen in the host workspace to invalidate all copies. This first pilot requires entering a full link; short-code pairing is not implemented.
 
-The app uses HTTPS only, never follows endpoint redirects, never renders remote HTML, never logs credentials, and clears content when a fetch fails. It refreshes once a minute while foregrounded. It does not force itself to launch at TV boot, lock users into a kiosk, or control their TV. Guest names, booking schedules, media and the other planned welcome features are not implemented.
+The app uses HTTPS only, never follows endpoint redirects, never renders remote HTML, never logs credentials, and clears content when a fetch fails. It refreshes once a minute while foregrounded. It does not force itself to launch at TV boot, lock users into a kiosk, or control their TV. The shared endpoint now optionally personalizes the welcome title to the current guest’s first name during the stay. Enable it in Guest Experience; it uses bookings saved in Treestand and listing-local check-in/checkout times. Media and the other planned welcome features are not implemented.
 
 ## Build
 
