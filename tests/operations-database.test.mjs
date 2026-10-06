@@ -19,6 +19,7 @@ test('checkout tasks isolate hosts, require MFA, deduplicate and follow booking 
  create policy owned_booking on ts_reservations to authenticated using(auth.uid()=owner_id) with check(auth.uid()=owner_id);
  grant select,update on ts_properties,ts_reservations to authenticated;`);
  await db.exec(await readFile(new URL('../database/turnover_tasks.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../database/operations_indexes.sql',import.meta.url),'utf8'));
  await db.exec(`set role authenticated;set test.uid='${a}';set test.aal='aal2';`);
  const prepare=async id=>(await db.query('select ts_prepare_checkout_tasks($1) as n',[id])).rows[0].n;
  assert.equal(await prepare(booking),2);assert.equal(await prepare(booking),0);
