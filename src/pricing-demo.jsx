@@ -1,0 +1,6 @@
+import React,{useState} from 'react';
+import {Pricing} from './pricing.jsx';
+import {todayInZone,addDay} from './pricing-model.mjs';
+const today=todayInZone('America/New_York');
+const property={id:'sample',name:'Sample Woodland Room',timezone:'America/New_York',weekday_cents:5600,weekend_cents:7000,markup_percent:18.34,max_guests:2,market:'Sample market',accommodation_type:'private_room'};
+export function PricingDemo(){const [notice,setNotice]=useState('');return <main className="workspace"><a href={import.meta.env.BASE_URL} className="brand"><img className="brand-logo" src={`${import.meta.env.BASE_URL}brand/treestand-logo.webp`} alt="Treestand Manager"/></a><h1>Pricing preview</h1><div className="notice">Sample listing · fictional prices · preview only. No account information is shown and saving is disabled.</div>{notice&&<p className="feedback" role="status">{notice}</p>}<Pricing properties={[property]} rates={[{id:'sample-rate',property_id:'sample',day:addDay(today,4),amount_cents:8500}]} reservations={[{property_id:'sample',arrival:addDay(today,3),departure:addDay(today,5),status:'confirmed'}]} comparables={[]} user={{id:'synthetic'}} busy={false} onAction={()=>setNotice('Preview only. No prices or account settings were saved.')}/><p><a href={import.meta.env.BASE_URL+'app'}>Sign in to manage your listing prices</a></p></main>}

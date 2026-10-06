@@ -1,0 +1,34 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+import {btree_gist} from '@electric-sql/pglite/contrib/btree_gist';
+test('bulk pricing is atomic, stale previews rejected, market rows owner/MFA bound',async()=>{
+ const db=new PGlite({extensions:{btree_gist}}),a='00000000-0000-0000-0000-000000000001',b='00000000-0000-0000-0000-000000000002';
+ await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;create function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb$$;grant usage on schema auth to authenticated;insert into auth.users values('${a}'),('${b}');`);
+ await db.exec(await readFile(new URL('../database/schema.sql',import.meta.url),'utf8'));
+ // Restrictive MFA mirrors the production rate/listing policies without unrelated tables.
+ for(const t of ['ts_properties','ts_rates'])await db.exec(`create policy ts_host_mfa on ${t} as restrictive for all to authenticated using((select auth.jwt()->>'aal')='aal2') with check((select auth.jwt()->>'aal')='aal2');`);
+ await db.exec(await readFile(new URL('../database/pricing_tools.sql',import.meta.url),'utf8'));
+ const login=async(id,aal='aal2')=>db.exec(`reset role;set role authenticated;select set_config('request.jwt.claim.sub','${id}',false);select set_config('request.jwt.claims','{"aal":"${aal}"}',false);`);
+ await login(a);const p=(await db.query(`insert into ts_properties(owner_id,name,weekday_cents,weekend_cents) values($1,'Synthetic room',5600,7000) returning id`,[a])).rows[0].id;
+ const call=(mode,value,expected,start='2026-10-09',end='2026-10-10',days=[5,6],floor=100,ceiling=1000000)=>db.query('select ts_edit_rates($1,$2,$3,$4,$5,$6,$7,$8,$9) as n',[p,start,end,days,mode,value,floor,ceiling,JSON.stringify(expected)]);
+ assert.equal((await call('percent',10,{'2026-10-09':7000,'2026-10-10':7000})).rows[0].n,2);
+ assert.deepEqual((await db.query('select amount_cents from ts_rates order by day')).rows.map(r=>r.amount_cents),[7700,7700]);
+ await assert.rejects(()=>call('set',9000,{'2026-10-09':7700,'2026-10-10':7000}),/Prices changed/);
+ assert.deepEqual((await db.query('select amount_cents from ts_rates order by day')).rows.map(r=>r.amount_cents),[7700,7700]);
+ await assert.rejects(()=>call('percent',100,{'2026-10-09':7700,'2026-10-10':7700},undefined,undefined,undefined,100,10000),/outside your limits/);
+ await assert.rejects(()=>call('set',9000,{'2026-10-09':7700,'2026-10-10':7700,'2026-10-11':5600}),/selection changed/);
+ assert.deepEqual((await db.query('select amount_cents from ts_rates order by day')).rows.map(r=>r.amount_cents),[7700,7700]);
+ const c=(await db.query(`insert into ts_market_comparables(owner_id,property_id,name,market,accommodation_type,source_url,arrival,departure,guests,nightly_cents,observed_on) values($1,$2,'Sample source','Garner, NC','private_room','https://example.com/room','2026-10-09','2026-10-12',2,9000,current_date) returning id`,[a,p])).rows[0].id;
+ await assert.rejects(()=>db.query(`update ts_market_comparables set observed_on=current_date+1 where id=$1`,[c]),e=>e.code==='23514');
+ await assert.rejects(()=>db.query(`update ts_market_comparables set source_url='javascript:alert(1)' where id=$1`,[c]),e=>e.code==='23514');
+ await login(b);assert.equal((await db.query('select * from ts_market_comparables')).rows.length,0);
+ await assert.rejects(()=>call('clear',null,{'2026-10-09':7700,'2026-10-10':7700}),/Listing unavailable/);
+ assert.equal((await db.query('delete from ts_market_comparables where id=$1 returning id',[c])).rows.length,0);
+ await assert.rejects(()=>db.query(`insert into ts_market_comparables(owner_id,property_id,name,market,accommodation_type,source_url,arrival,departure,guests,nightly_cents,observed_on) values($1,$2,'Foreign','Garner','private_room','https://example.com/x','2026-10-09','2026-10-12',2,9000,current_date)`,[b,p]),e=>e.code==='23503');
+ await login(a,'aal1');assert.equal((await db.query('select * from ts_market_comparables')).rows.length,0);await assert.rejects(()=>call('set',9000,{'2026-10-09':7700,'2026-10-10':7700}),/Listing unavailable/);
+ await login(a);assert.equal((await call('clear',null,{'2026-10-09':7700,'2026-10-10':7700})).rows[0].n,2);assert.equal((await db.query('select * from ts_rates')).rows.length,0);
+ await db.exec('reset role;set role anon;');await assert.rejects(()=>call('clear',null,{}),e=>e.code==='42501');await assert.rejects(()=>db.query('select * from ts_market_comparables'),e=>e.code==='42501');
+ await db.close();
+});
