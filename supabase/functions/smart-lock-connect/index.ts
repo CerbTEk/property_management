@@ -2,6 +2,8 @@ import {createClient} from 'npm:@supabase/supabase-js@2.58.0';
 import {seamClient,SeamError} from '../../../server/seam.mjs';
 import {directTTLockConnection} from '../../../server/direct-ttlock.mjs';
 import {ttlockAccounts} from '../../../server/ttlock-auth.mjs';
+import {nativeAccounts} from '../../../server/native-accounts.mjs';
+import {NativeOAuthError} from '../../../server/native-oauth.mjs';
 import {TTLockError} from '../../../server/ttlock.mjs';
 const origin='https://treestand-manager.webflow.io';
 const headers={'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization,apikey,content-type,x-client-info','Access-Control-Allow-Methods':'POST,OPTIONS','Vary':'Origin'};
@@ -19,8 +21,8 @@ Deno.serve(async req=>{
  if(claimError||claims?.claims?.sub!==identity.user.id)return reply({error:'Sign in required.'},401);
  const owner=identity.user.id;
  if(owner!=='3f03551d-89de-4214-aa7a-db7a86fe1735'&&claims.claims.aal!=='aal2')return reply({error:'Authenticator verification required.'},403);
- if(Number(req.headers.get('content-length'))>2048)return reply({error:'Request too large.'},413);
- let body;try{const raw=await req.text();if(raw.length>2048)return reply({error:'Request too large.'},413);body=JSON.parse(raw);if(!body||typeof body!=='object'||Array.isArray(body))return reply({error:'Invalid request.'},400);}catch{return reply({error:'Invalid request.'},400);}
+ if(Number(req.headers.get('content-length'))>4096)return reply({error:'Request too large.'},413);
+ let body;try{const raw=await req.text();if(raw.length>4096)return reply({error:'Request too large.'},413);body=JSON.parse(raw);if(!body||typeof body!=='object'||Array.isArray(body))return reply({error:'Invalid request.'},400);}catch{return reply({error:'Invalid request.'},400);}
  if(['ttlock_status','ttlock_connect','ttlock_disconnect','ttlock_sync'].includes(body.action)){
   const admin=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
   const store={
@@ -49,6 +51,25 @@ Deno.serve(async req=>{
    }
    return reply({imported:inventory.locks.length,mode:'direct',gateways:inventory.gateways});
   }catch(e){return reply({error:e instanceof TTLockError?e.message:'TTLock connection could not be saved.',code:e instanceof TTLockError?e.code:'unavailable'},e instanceof TTLockError&&e.code==='ownership'?403:e instanceof TTLockError&&e.code==='rate_limit'?429:502);}
+ }
+ if(['native_status','native_begin','native_complete','native_disconnect'].includes(body.action)){
+  if(!['tedee','igloohome'].includes(body.provider))return reply({error:'Manufacturer connection unavailable.'},400);
+  const admin=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
+  const store={
+   async read(ownerId,provider){const {data,error}=await admin.from('ts_native_lock_accounts').select('*').eq('owner_id',ownerId).eq('provider',provider).maybeSingle();if(error)throw Error('storage');return data;},
+   async begin(ownerId,provider,values){const {data,error}=await admin.rpc('ts_begin_native_lock',{p_owner:ownerId,p_provider:provider,p_state:values.state_hash,p_binding:values.binding_hash,p_sealed:values.sealed_transaction,p_expires:values.expires_at});if(error)throw Error('storage');return data;},
+   async consume(ownerId,provider,state,binding){const {data,error}=await admin.rpc('ts_consume_native_lock',{p_owner:ownerId,p_provider:provider,p_state:state,p_binding:binding});if(error)throw Error('storage');return data?.[0]||null;},
+   async save(ownerId,provider,revision,values){const {data,error}=await admin.from('ts_native_lock_accounts').update({...values,revision:crypto.randomUUID(),updated_at:new Date().toISOString()}).eq('owner_id',ownerId).eq('provider',provider).eq('revision',revision).select('owner_id');if(error)throw Error('storage');return data?.length===1;},
+   async disconnect(ownerId,provider){const {error}=await admin.rpc('ts_disconnect_native_lock',{p_owner:ownerId,p_provider:provider});if(error)throw Error('storage');}
+  };
+  const prefix=body.provider.toUpperCase();
+  const accounts=nativeAccounts({provider:body.provider,clientId:Deno.env.get(prefix+'_CLIENT_ID'),clientSecret:Deno.env.get(prefix+'_CLIENT_SECRET'),encryptionKey:Deno.env.get('NATIVE_LOCK_TOKEN_ENCRYPTION_KEY'),store});
+  try{
+   if(body.action==='native_status')return reply(await accounts.status(owner));
+   if(body.action==='native_begin')return reply(await accounts.begin(owner,body.browser_binding));
+   if(body.action==='native_complete')return reply(await accounts.complete(owner,body.browser_binding,body.callback_url));
+   return reply(await accounts.disconnect(owner));
+  }catch(e){return reply({error:e instanceof NativeOAuthError?e.message:'Manufacturer connection unavailable. Retry sign-in.',code:e instanceof NativeOAuthError?e.code:'unavailable'},e instanceof NativeOAuthError&&e.code==='ownership'?403:e instanceof NativeOAuthError&&e.code==='rate_limit'?429:502);}
  }
  const apiKey=Deno.env.get('SEAM_API_KEY');
  if(body.action==='status'&&!apiKey)return reply({configured:false,ready:false,mode:null});

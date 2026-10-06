@@ -1,9 +1,7 @@
 import * as oauth from 'oauth4webapi';
 
-// Server-only preparation for approved manufacturer apps. No deployed route uses
-// this module yet. A route must encrypt/store transactions, bind them to the
-// initiating browser + authenticated host, and atomically consume them before
-// calling complete(). Never accept a transaction supplied by a browser.
+// Server-only protocol adapter. native-accounts stores and consumes trusted
+// transactions; the browser supplies only its binding secret and callback URL.
 export const nativeCallback='https://treestand-manager.webflow.io/app/';
 const tedeeBase='https://tedee.b2clogin.com/tedee.onmicrosoft.com/B2C_1A_Signup_Signin_With_Kmsi/oauth2/v2.0';
 const providers=Object.freeze({
@@ -33,7 +31,7 @@ export function nativeOAuth({provider,clientId,clientSecret,fetcher=fetch,now=Da
   status(){return {provider,configured,liveValidated:false};},
   async begin(ownerId){
    assertConfigured();if(typeof ownerId!=='string'||!ownerId)throw new NativeOAuthError('Host authorization required.','ownership');
-   const state=oauth.generateRandomState(),verifier=oauth.generateRandomCodeVerifier();
+   const state='tslock.'+provider+'.'+oauth.generateRandomState(),verifier=oauth.generateRandomCodeVerifier();
    const url=new URL(settings.authorization_endpoint);
    for(const [key,value] of Object.entries({client_id:clientId,redirect_uri:nativeCallback,response_type:'code',scope:settings.scope,state,code_challenge:await oauth.calculatePKCECodeChallenge(verifier),code_challenge_method:'S256'}))url.searchParams.set(key,value);
    return {url:url.href,transaction:{ownerId,provider,clientId,state,verifier,callback:nativeCallback,issuedAt:now()}};
