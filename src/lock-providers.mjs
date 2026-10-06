@@ -11,7 +11,7 @@ export function codeCompatibility(lock,code){
  }
  const length=lock.brand==='tedee'?5:4;
  if(lock.brand==='nuki'||lock.provider==='nuki')return 'Nuki requires six digits and cannot use the guest phone last four.';
- if(lock.provider==='seam'){
+ if(['seam','tedee','igloohome'].includes(lock.provider)){
   if(lock.capabilities?.online_codes!==true)return 'Online guest codes have not been verified for this device.';
   if(!lock.capabilities?.code_lengths?.includes(length))return `${length===5?'Five':'Four'}-digit guest codes have not been verified for this device.`;
   if(lock.online!==true)return 'The lock is offline or its connection has not been verified.';

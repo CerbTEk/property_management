@@ -6,7 +6,7 @@ import {btree_gist} from '@electric-sql/pglite/contrib/btree_gist';
 test('actual schema rejects foreign accounts, overlap and invalid occupancy',async()=>{
  const db=new PGlite({extensions:{btree_gist}});
  const a='00000000-0000-0000-0000-000000000001',b='00000000-0000-0000-0000-000000000002';
- await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key); create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb $$; grant usage on schema auth to authenticated; grant execute on function auth.jwt() to authenticated; grant execute on function auth.uid() to authenticated; insert into auth.users values('${a}'),('${b}'),('3f03551d-89de-4214-aa7a-db7a86fe1735');`);
+ await db.exec(`create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users(id uuid primary key); create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb $$; grant usage on schema auth to authenticated; grant execute on function auth.jwt() to authenticated; grant execute on function auth.uid() to authenticated; insert into auth.users values('${a}'),('${b}'),('3f03551d-89de-4214-aa7a-db7a86fe1735');`);
  await db.exec(await readFile(new URL('../database/schema.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/guest_experience.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/display_devices.sql',import.meta.url),'utf8'));
@@ -18,6 +18,8 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  await db.exec(await readFile(new URL('../database/guest_phone_code.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/multi_brand_locks.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/ttlock_accounts.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/migrations/20261006120856_native_lock_accounts.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/migrations/20261006121917_native_lock_inventory.sql',import.meta.url),'utf8'));
  const login=async id=>{await db.exec(`reset role; set role authenticated; select set_config('request.jwt.claims','{"aal":"aal2"}',false); select set_config('request.jwt.claim.sub','${id}',false);`);};
  await db.exec(`insert into ts_ttlock_accounts(owner_id,provider_uid,status,sealed_tokens,expires_at) values('${a}','123','connected','synthetic-cipher',now()+interval '1 day');`);
  assert.equal((await db.query('select * from ts_claim_ttlock_connect($1)',[a])).rows.length,1);
@@ -28,6 +30,7 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  await assert.rejects(()=>db.query(`select * from ts_claim_ttlock_connect($1)`,[a]),e=>e.code==='42501');
  await login(b);assert.equal((await db.query('select owner_id,status from ts_ttlock_accounts')).rows.length,0);
  await login(a);
+ await assert.rejects(()=>db.query(`insert into ts_locks(owner_id,name,provider,brand,provider_device_id) values($1,'Forged native','tedee','tedee','123')`,[a]),e=>e.code==='42501');
  const result=await db.query(`insert into ts_properties(owner_id,name,weekday_cents,weekend_cents) values($1,'Pilot room',5600,7000) returning id`,[a]);const p=result.rows[0].id;
  // Password-only and missing assurance claims cannot read or write any host table.
  for(const claims of ['{"aal":"aal1"}','{}']){

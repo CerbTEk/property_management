@@ -2,6 +2,7 @@ import {createClient} from 'npm:@supabase/supabase-js@2.58.0';
 import {seamClient,SeamError} from '../../../server/seam.mjs';
 import {directTTLockConnection} from '../../../server/direct-ttlock.mjs';
 import {ttlockAccounts} from '../../../server/ttlock-auth.mjs';
+import {nativeInventory} from '../../../server/native-inventory.mjs';
 import {nativeAccounts} from '../../../server/native-accounts.mjs';
 import {NativeOAuthError} from '../../../server/native-oauth.mjs';
 import {TTLockError} from '../../../server/ttlock.mjs';
@@ -52,14 +53,16 @@ Deno.serve(async req=>{
    return reply({imported:inventory.locks.length,mode:'direct',gateways:inventory.gateways});
   }catch(e){return reply({error:e instanceof TTLockError?e.message:'TTLock connection could not be saved.',code:e instanceof TTLockError?e.code:'unavailable'},e instanceof TTLockError&&e.code==='ownership'?403:e instanceof TTLockError&&e.code==='rate_limit'?429:502);}
  }
- if(['native_status','native_begin','native_complete','native_disconnect'].includes(body.action)){
+ if(['native_status','native_begin','native_complete','native_disconnect','native_sync'].includes(body.action)){
   if(!['tedee','igloohome'].includes(body.provider))return reply({error:'Manufacturer connection unavailable.'},400);
   const admin=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
   const store={
    async read(ownerId,provider){const {data,error}=await admin.from('ts_native_lock_accounts').select('*').eq('owner_id',ownerId).eq('provider',provider).maybeSingle();if(error)throw Error('storage');return data;},
    async begin(ownerId,provider,values){const {data,error}=await admin.rpc('ts_begin_native_lock',{p_owner:ownerId,p_provider:provider,p_state:values.state_hash,p_binding:values.binding_hash,p_sealed:values.sealed_transaction,p_expires:values.expires_at});if(error)throw Error('storage');return data;},
    async consume(ownerId,provider,state,binding){const {data,error}=await admin.rpc('ts_consume_native_lock',{p_owner:ownerId,p_provider:provider,p_state:state,p_binding:binding});if(error)throw Error('storage');return data?.[0]||null;},
-   async save(ownerId,provider,revision,values){const {data,error}=await admin.from('ts_native_lock_accounts').update({...values,revision:crypto.randomUUID(),updated_at:new Date().toISOString()}).eq('owner_id',ownerId).eq('provider',provider).eq('revision',revision).select('owner_id');if(error)throw Error('storage');return data?.length===1;},
+   async save(ownerId,provider,revision,values){const {data,error}=await admin.rpc('ts_save_native_account',{p_owner:ownerId,p_provider:provider,p_revision:revision,p_sealed:values.sealed_tokens,p_expires:values.expires_at});if(error)throw Error('storage');return data===true;},
+   async claimRefresh(ownerId,provider,revision){const {data,error}=await admin.rpc('ts_claim_native_refresh',{p_owner:ownerId,p_provider:provider,p_revision:revision});if(error)throw Error('storage');return data?.[0]||null;},
+   async finishRefresh(ownerId,provider,revision,values){const {data,error}=await admin.from('ts_native_lock_accounts').update({...values,updated_at:new Date().toISOString()}).eq('owner_id',ownerId).eq('provider',provider).eq('revision',revision).eq('status','connected').select('owner_id');if(error)throw Error('storage');return data?.length===1;},
    async disconnect(ownerId,provider){const {error}=await admin.rpc('ts_disconnect_native_lock',{p_owner:ownerId,p_provider:provider});if(error)throw Error('storage');}
   };
   const prefix=body.provider.toUpperCase();
@@ -68,8 +71,13 @@ Deno.serve(async req=>{
    if(body.action==='native_status')return reply(await accounts.status(owner));
    if(body.action==='native_begin')return reply(await accounts.begin(owner,body.browser_binding));
    if(body.action==='native_complete')return reply(await accounts.complete(owner,body.browser_binding,body.callback_url));
-   return reply(await accounts.disconnect(owner));
-  }catch(e){return reply({error:e instanceof NativeOAuthError?e.message:'Manufacturer connection unavailable. Retry sign-in.',code:e instanceof NativeOAuthError?e.code:'unavailable'},e instanceof NativeOAuthError&&e.code==='ownership'?403:e instanceof NativeOAuthError&&e.code==='rate_limit'?429:502);}
+   if(body.action==='native_disconnect')return reply(await accounts.disconnect(owner));
+   const access=await accounts.access(owner);
+   const inventory=await nativeInventory({provider:body.provider,accessToken:access.accessToken}).list();
+   const {data:imported,error}=await admin.rpc('ts_import_native_inventory',{p_owner:owner,p_provider:body.provider,p_revision:access.revision,p_locks:inventory.locks});
+   if(error)throw new NativeOAuthError('Inventory could not be saved. The account may have changed or a device may already use another provider. Recheck and retry.','needs_review');
+   return reply({provider:body.provider,imported,ignored:inventory.ignored,mode:'native',liveValidated:false});
+  }catch(e){return reply({error:e instanceof NativeOAuthError?e.message:'Manufacturer connection unavailable. Retry sign-in.',code:e instanceof NativeOAuthError?e.code:'unavailable'},e instanceof NativeOAuthError&&e.code==='ownership'?403:e instanceof NativeOAuthError&&e.code==='rate_limit'?429:e instanceof NativeOAuthError&&e.code==='refresh_pending'?409:502);}
  }
  const apiKey=Deno.env.get('SEAM_API_KEY');
  if(body.action==='status'&&!apiKey)return reply({configured:false,ready:false,mode:null});

@@ -6,6 +6,8 @@ test('native database grants are service-only, rate-limited, expiring and single
  const db=new PGlite(),a='00000000-0000-0000-0000-000000000001',b='00000000-0000-0000-0000-000000000002',hash='a'.repeat(64),binding='b'.repeat(64);
  await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);insert into auth.users values('${a}'),('${b}');`);
  await db.exec(await readFile(new URL('../supabase/migrations/20261006120856_native_lock_accounts.sql',import.meta.url),'utf8'));
+ await db.exec(`create table public.ts_locks(owner_id uuid not null,name text not null,provider text not null constraint ts_locks_provider_check check(provider in ('ttlock','seam','nuki')),brand text,provider_device_id text,online boolean,capabilities jsonb default '{}',synced_at timestamptz,unique(owner_id,provider,provider_device_id));alter table public.ts_locks enable row level security;grant select,insert,update on public.ts_locks to service_role;create policy server_only on public.ts_locks to service_role using(true) with check(true);`);
+ await db.exec(await readFile(new URL('../supabase/migrations/20261006121917_native_lock_inventory.sql',import.meta.url),'utf8'));
  await db.exec('set role service_role');
  const begin=async(owner=a)=>db.query("select ts_begin_native_lock($1,'tedee',$2,$3,'synthetic-cipher',now()+interval '10 minutes') as revision",[owner,hash,binding]);
  const revision=(await begin()).rows[0].revision;assert.ok(revision);assert.equal((await begin()).rows[0].revision,null);
@@ -16,6 +18,21 @@ test('native database grants are service-only, rate-limited, expiring and single
  await db.query("update ts_native_lock_authorizations set expires_at=now()-interval '1 second'");assert.equal((await consume()).rows.length,0);
  await db.query("select ts_disconnect_native_lock($1,'tedee')",[a]);assert.equal((await db.query('select * from ts_native_lock_authorizations')).rows.length,0);
  assert.equal((await db.query('select revision from ts_native_lock_accounts')).rows[0].revision===revision,false);
+ const current=(await db.query('select revision from ts_native_lock_accounts')).rows[0].revision;
+ assert.equal((await db.query("select ts_save_native_account($1,'tedee',$2,'synthetic',now()+interval '1 hour') as saved",[a,current])).rows[0].saved,true);
+ const account=(await db.query('select * from ts_native_lock_accounts')).rows[0];
+ const claim=await db.query("select * from ts_claim_native_refresh($1,'tedee',$2)",[a,account.revision]);assert.equal(claim.rows.length,1);
+ assert.equal((await db.query("select * from ts_claim_native_refresh($1,'tedee',$2)",[a,account.revision])).rows.length,0);
+ const revisionForImport=claim.rows[0].revision;
+ await db.query('update ts_native_lock_accounts set refresh_until=null where owner_id=$1',[a]);
+ const locks=[{provider:'tedee',brand:'tedee',provider_device_id:'123',name:'Imported',online:true,synced_at:new Date().toISOString()}];
+ const sync=async(values=locks,owner=a,rev=revisionForImport)=>db.query("select ts_import_native_inventory($1,'tedee',$2,$3::jsonb) as imported",[owner,rev,JSON.stringify(values)]);
+ assert.equal((await sync()).rows[0].imported,1);
+ await db.query("update ts_locks set name='Host name' where owner_id=$1",[a]);await sync();assert.equal((await db.query('select name from ts_locks')).rows[0].name,'Host name');
+ await assert.rejects(()=>sync([...locks,{...locks[0],provider:'igloohome',provider_device_id:'other'}]));assert.equal((await db.query('select * from ts_locks')).rows.length,1);assert.equal((await db.query('select online from ts_locks')).rows[0].online,true);
+ await assert.rejects(()=>sync(locks,b));
+ await sync([]);assert.equal((await db.query('select online,synced_at from ts_locks')).rows[0].synced_at,null);
+ await db.query("select ts_disconnect_native_lock($1,'tedee')",[a]);await assert.rejects(()=>sync());
  for(const role of ['anon','authenticated']){
   await db.exec('reset role;set role '+role);
   for(const table of ['ts_native_lock_accounts','ts_native_lock_authorizations'])await assert.rejects(()=>db.query('select * from '+table),e=>e.code==='42501');

@@ -19,7 +19,7 @@ test('native account grants bind host and browser, consume once, and never retur
  const f=fixture(),start=await f.api.begin('a',binding),url=nativeCallback+'?code=synthetic&state='+start.state;
  await assert.rejects(()=>f.api.complete('b',binding,url));await assert.rejects(()=>f.api.complete('a','c'.repeat(64),url));assert.equal(f.calls,0);
  const result=await f.api.complete('a',binding,url);assert.equal(result.connected,true);assert.equal(JSON.stringify(result).includes('synthetic-access'),false);assert.equal(f.row.sealed_tokens.includes('synthetic-access'),false);
- await assert.rejects(()=>f.api.complete('a',binding,url));assert.equal(f.calls,1);assert.equal((await f.api.status('a')).inventoryReady,false);
+ await assert.rejects(()=>f.api.complete('a',binding,url));assert.equal(f.calls,1);assert.equal((await f.api.status('a')).inventoryReady,true);
 });
 test('native disconnect invalidates pending grants and completion cannot overwrite changed accounts',async()=>{
  const f=fixture(),start=await f.api.begin('a',binding),url=nativeCallback+'?code=x&state='+start.state;
@@ -28,4 +28,21 @@ test('native disconnect invalidates pending grants and completion cannot overwri
 });
 test('native connection refuses missing application credentials without a provider call',async()=>{
  const f=fixture(),api=nativeAccounts({provider:'tedee',store:f.store});assert.equal((await api.status('a')).configured,false);await assert.rejects(()=>api.begin('a',binding),e=>e.code==='not_configured');assert.equal(f.calls,0);
+});
+
+test('native renewal rotates encrypted tokens and excludes concurrent refresh',async()=>{
+ const f=fixture(),start=await f.api.begin('a',binding);await f.api.complete('a',binding,nativeCallback+'?code=x&state='+start.state);
+ const vault=nativeVault(key,'tedee','synthetic');
+ f.row.sealed_tokens=await vault.seal('a','tokens',{accessToken:'old-access',refreshToken:'old-refresh',expiresAt:new Date(Date.now()-1000).toISOString()});
+ let leased=false;
+ f.store.claimRefresh=async()=>{if(leased)return null;leased=true;f.row.revision='renewed';return {...f.row};};
+ f.store.finishRefresh=async(owner,provider,rev,values)=>{if(f.row.revision!==rev)return false;Object.assign(f.row,values);return true;};
+ const attempts=await Promise.allSettled([f.api.access('a'),f.api.access('a')]);assert.equal(attempts.filter(r=>r.status==='fulfilled').length,1);
+ assert.equal(f.calls,2);assert.equal((await vault.open('a','tokens',f.row.sealed_tokens)).refreshToken,'synthetic-refresh');
+});
+test('native renewal refuses a stale save after disconnect',async()=>{
+ const f=fixture(),start=await f.api.begin('a',binding);await f.api.complete('a',binding,nativeCallback+'?code=x&state='+start.state);
+ f.row.sealed_tokens=await nativeVault(key,'tedee','synthetic').seal('a','tokens',{accessToken:'old',refreshToken:'refresh',expiresAt:new Date(Date.now()-1000).toISOString()});
+ f.store.claimRefresh=async()=>({...f.row});f.store.finishRefresh=async()=>false;
+ await assert.rejects(()=>f.api.access('a'),e=>e.code==='connection_changed');
 });

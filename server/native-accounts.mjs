@@ -16,7 +16,7 @@ export function nativeAccounts({provider,clientId,clientSecret,encryptionKey,sto
  function binding(value){if(typeof value!=='string'||!/^[a-f0-9]{64}$/.test(value))throw new NativeOAuthError('Start sign-in from this browser.','invalid');return nativeHash(value);}
  async function owned(owner){const row=await store.read(owner,provider);if(row&&(row.owner_id!==owner||row.provider!==provider))throw new NativeOAuthError('Connection ownership mismatch.','ownership');return row;}
  return {
-  async status(owner){const row=await owned(owner),connected=row?.status==='connected';return {provider,mode:'native',configured,connected,expires_at:connected?row.expires_at:null,reauthorize:connected&&Date.parse(row.expires_at)<=now(),inventoryReady:false,liveValidated:false};},
+  async status(owner){const row=await owned(owner),connected=row?.status==='connected';return {provider,mode:'native',configured,connected,expires_at:connected?row.expires_at:null,reauthorize:connected&&row.refresh_failed===true,inventoryReady:configured&&connected&&row.refresh_failed!==true,liveValidated:false,last_synced_at:row?.last_synced_at||null,imported_count:row?.imported_count||0};},
   async begin(owner,browserBinding){
    setup();const bindingHash=await binding(browserBinding),result=await oauth.begin(owner);
    const revision=await store.begin(owner,provider,{state_hash:await nativeHash(result.transaction.state),binding_hash:bindingHash,sealed_transaction:await vault.seal(owner,'authorization',result.transaction),expires_at:new Date(now()+600000).toISOString()});
@@ -36,7 +36,25 @@ export function nativeAccounts({provider,clientId,clientSecret,encryptionKey,sto
    const transaction=await vault.open(owner,'authorization',row.sealed_transaction);
    const tokens=await oauth.complete(owner,transaction,callbackUrl);
    if(!await store.save(owner,provider,row.account_revision,{sealed_tokens:await vault.seal(owner,'tokens',tokens),expires_at:tokens.expiresAt,status:'connected'}))throw new NativeOAuthError('Connection changed during sign-in. Start again.','connection_changed');
-   return {provider,connected:true,inventoryReady:false,liveValidated:false};
+   return {provider,connected:true,inventoryReady:true,liveValidated:false};
+  },
+  async access(owner){
+   setup();let row=await owned(owner);
+   if(!row||row.status!=='connected'||row.refresh_failed)throw new NativeOAuthError('Reconnect your manufacturer account.','not_connected');
+   if(row.refresh_until&&Date.parse(row.refresh_until)>now())throw new NativeOAuthError('Account authorization is renewing. Try sync again shortly.','refresh_pending');
+   let tokens=await vault.open(owner,'tokens',row.sealed_tokens);
+   if(typeof tokens.accessToken!=='string'||!tokens.accessToken||typeof tokens.refreshToken!=='string'||!tokens.refreshToken||!Number.isFinite(Date.parse(tokens.expiresAt)))throw new NativeOAuthError('Reconnect your manufacturer account.','connection_invalid');
+   if(Date.parse(tokens.expiresAt)<=now()+300000){
+    const claim=await store.claimRefresh(owner,provider,row.revision);
+    if(!claim)throw new NativeOAuthError('Account authorization changed or is renewing. Try again shortly.','refresh_pending');
+    if(claim.owner_id!==owner||claim.provider!==provider)throw new NativeOAuthError('Connection ownership mismatch.','ownership');
+    row=claim;tokens=await vault.open(owner,'tokens',row.sealed_tokens);
+    try{
+     tokens=await oauth.refresh(tokens.refreshToken);
+     if(!await store.finishRefresh(owner,provider,row.revision,{sealed_tokens:await vault.seal(owner,'tokens',tokens),expires_at:tokens.expiresAt,refresh_until:null,refresh_failed:false}))throw new NativeOAuthError('Connection changed during renewal. Recheck your account.','connection_changed');
+    }catch(e){await store.finishRefresh(owner,provider,row.revision,{refresh_until:null,refresh_failed:true});throw e;}
+   }
+   return {accessToken:tokens.accessToken,revision:row.revision};
   },
   async disconnect(owner){await owned(owner);await store.disconnect(owner,provider);return {provider,connected:false};}
  };

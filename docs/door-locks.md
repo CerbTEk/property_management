@@ -65,4 +65,6 @@ Sources: https://euopen.ttlock.com/doc/oauth2 ; https://euopen.ttlock.com/doc/oa
 
 Native expansion and manufacturer onboarding are tracked in [native-lock-integrations.md](native-lock-integrations.md). Brand registration and inventory adapters do not constitute verified physical access automation.
 
-Tedee requires an online bridge, compatible keypad and observed five-digit custom-code capability. Nuki remains incompatible; a zero prefix cannot satisfy its six-digit 1–9 requirement. Forty-seven automated checks and the production build pass; live code writes remain disabled.
+Tedee requires an online bridge, compatible keypad and observed five-digit custom-code capability. Nuki remains incompatible; a zero prefix cannot satisfy its six-digit 1–9 requirement. Fifty-nine automated checks and the production build pass; live code writes remain disabled.
+
+Native Tedee and igloohome account linking now includes token renewal and read-only lock imports. Native devices use their own provider namespace and require server import; clients can rename, enable and assign them but cannot forge capabilities. Code capability remains unverified, so native access plans require review. See the native integration document for the inventory migration and deployment bundle.
