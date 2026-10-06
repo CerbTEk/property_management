@@ -82,7 +82,7 @@ export function stripePayments({stripe,store,config:c,now=()=>Date.now()}){
   await verifyPlatform();
   return locked(owner,email,async row=>{
    const account=await ensureAccount(row);
-   const link=await stripe.v2.core.accountLinks.create({account,use_case:{type:'account_onboarding',account_onboarding:{configurations:['merchant'],refresh_url:c.origin+'/app/?payments=onboarding_refresh',return_url:c.origin+'/app/?payments=onboarding_return'}}});
+   const link=await stripe.v2.core.accountLinks.create({account,use_case:{type:'account_onboarding',account_onboarding:{configurations:['merchant','customer'],refresh_url:c.origin+'/app/?payments=onboarding_refresh',return_url:c.origin+'/app/?payments=onboarding_return'}}});
    if(link.account!==account||link.livemode!==c.livemode)throw new PaymentsError('Stripe onboarding configuration needs review.','account_mismatch');
    return {url:link.url};
   });

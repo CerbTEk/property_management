@@ -30,7 +30,7 @@ test('account creation is reused and always uses the independent host model',asy
 });
 test('hosted onboarding uses the owned account, fixed return URLs and strict Stripe redirect validation',async()=>{
  const f=fixture();let calls=0;
- f.stripe.v2.core.accountLinks={create:async p=>{calls++;assert.equal(p.account,'acct_host');assert.deepEqual(p.use_case,{type:'account_onboarding',account_onboarding:{configurations:['merchant'],refresh_url:config.origin+'/app/?payments=onboarding_refresh',return_url:config.origin+'/app/?payments=onboarding_return'}});return {account:'acct_host',livemode:false,url:'https://connect.stripe.com/setup/test'};}};
+ f.stripe.v2.core.accountLinks={create:async p=>{calls++;assert.equal(p.account,'acct_host');assert.deepEqual(p.use_case,{type:'account_onboarding',account_onboarding:{configurations:['merchant','customer'],refresh_url:config.origin+'/app/?payments=onboarding_refresh',return_url:config.origin+'/app/?payments=onboarding_return'}});return {account:'acct_host',livemode:false,url:'https://connect.stripe.com/setup/test'};}};
  assert.deepEqual(await f.service.onboarding('owner-a','a@example.invalid'),{url:'https://connect.stripe.com/setup/test'});
  await f.service.onboarding('owner-a','a@example.invalid');assert.equal(calls,2);assert.equal(f.state.created,1);assert.equal(f.state.locked,false);
  assert.equal(onboardingRedirect('https://connect.stripe.com/setup/test'),'https://connect.stripe.com/setup/test');

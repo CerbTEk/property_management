@@ -22,7 +22,10 @@ export function paymentsHandler({authenticate,service,config}){
    if(body.action==='checkout')return reply(await service.checkout(user.id,user.email,body.interval));
    if(body.action==='portal')return reply(await service.portal(user.id));
    return reply({error:'Unknown payment action.'},400);
-  }catch(e){return reply({error:e instanceof PaymentsError?e.message:'Payments are unavailable. Recheck the connection and try again.',code:e instanceof PaymentsError?e.code:'unavailable'},e instanceof PaymentsError?e.status:502);}
+  }catch(e){
+   if(!(e instanceof PaymentsError))console.error('treestand_payment_failure',JSON.stringify({type:e?.type||e?.name,code:e?.code,status:e?.statusCode,requestId:e?.requestId}));
+   return reply({error:e instanceof PaymentsError?e.message:'Payments are unavailable. Recheck the connection and try again.',code:e instanceof PaymentsError?e.code:'unavailable'},e instanceof PaymentsError?e.status:502);
+  }
  };
 }
 export function stripeWebhookHandler({constructEvent,service,livemode}){
