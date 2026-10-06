@@ -17,6 +17,7 @@ export function paymentsHandler({authenticate,service,config}){
    let body;try{body=JSON.parse(raw);}catch{return reply({error:'Invalid request.'},400);}
    if(!body||Array.isArray(body)||typeof body!=='object'||Object.keys(body).some(k=>!['action','interval'].includes(k)))return reply({error:'Invalid request.'},400);
    if(body.action==='status')return reply(await service.status(user.id));
+   if(body.action==='onboarding')return reply(await service.onboarding(user.id,user.email));
    if(body.action==='account_session')return reply(await service.accountSession(user.id,user.email));
    if(body.action==='checkout')return reply(await service.checkout(user.id,user.email,body.interval));
    if(body.action==='portal')return reply(await service.portal(user.id));

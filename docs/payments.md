@@ -51,3 +51,10 @@ Treestand Property Management is now authorized in the Stripe connector. Live ac
 - Connect can list the sandbox's existing test connected accounts; this confirms platform access, not validation of Treestand's own onboarding or charge paths. Existing Stripe-generated test accounts are not linked to a real host workspace.
 
 Blocking runtime step: add the sandbox restricted API key, matching publishable key, webhook signing secret, `TREESTAND_STRIPE_ACCOUNT_ID=acct_1UNac2Gk8T1gHOLb`, and `TREESTAND_STRIPE_MODE=sandbox` in the PMS project's Edge Function Secrets. The available MCP does not write secrets and the local Supabase CLI has no login. Keep Billing disabled. Once secrets are stored, verify the owner-scoped endpoint, enable the sandbox webhook, and complete end-to-end sandbox validation before configuring live payments.
+
+
+## Onboarding recovery
+
+Host setup opens a freshly generated Accounts v2 merchant onboarding link in the same browser tab. The authenticated host's stored account and configured application origin determine the link; callers cannot supply account IDs or return URLs. Expired links return to the Payments page and attempt to generate a new link after host authentication. Returning from onboarding never marks the account ready; status retrieves the current merchant capability from Stripe.
+
+Embedded payment settings remain available, with a reload action that signs out the old Connect instance and requests a new account session. A failed embedded component does not disable hosted setup. The October 6 sandbox subscription webhook is enabled following a signed HTTP 200 probe; full onboarding and subscription lifecycle validation are separate checks.

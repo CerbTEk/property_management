@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import Stripe from 'stripe';
 import {paymentConfig,stripePayments,merchantStatus} from '../server/stripe-payments.mjs';
 import {paymentsHandler,stripeWebhookHandler} from '../server/payments-handler.mjs';
-import {paymentRedirect} from '../src/payments-client.mjs';
+import {paymentRedirect,onboardingRedirect} from '../src/payments-client.mjs';
 const time=Date.now();
 const config={configured:true,key:'unused',publishableKey:'pk_test_example',platform:'acct_platform',mode:'sandbox',livemode:false,prices:{monthly:'price_month',annual:'price_year'},taxMode:'reviewed_no_tax',billingEnabled:true,origin:'https://treestand-manager.webflow.io'};
 function fixture(){
@@ -27,6 +27,23 @@ test('missing account config and mixed keys fail closed; origin may move to perm
 test('account creation is reused and always uses the independent host model',async()=>{
  const {state,service}=fixture();await service.accountSession('owner-a','a@example.invalid');await service.accountSession('owner-a','a@example.invalid');assert.equal(state.created,1);assert.equal(state.sessions,2);
  const result=await service.status('owner-a');assert.equal(result.ready,true);assert.equal(result.bookingCheckoutEnabled,false);assert.equal(result.bookingCommission,0);
+});
+test('hosted onboarding uses the owned account, fixed return URLs and strict Stripe redirect validation',async()=>{
+ const f=fixture();let calls=0;
+ f.stripe.v2.core.accountLinks={create:async p=>{calls++;assert.equal(p.account,'acct_host');assert.deepEqual(p.use_case,{type:'account_onboarding',account_onboarding:{configurations:['merchant'],refresh_url:config.origin+'/app/?payments=onboarding_refresh',return_url:config.origin+'/app/?payments=onboarding_return'}});return {account:'acct_host',livemode:false,url:'https://connect.stripe.com/setup/test'};}};
+ assert.deepEqual(await f.service.onboarding('owner-a','a@example.invalid'),{url:'https://connect.stripe.com/setup/test'});
+ await f.service.onboarding('owner-a','a@example.invalid');assert.equal(calls,2);assert.equal(f.state.created,1);assert.equal(f.state.locked,false);
+ assert.equal(onboardingRedirect('https://connect.stripe.com/setup/test'),'https://connect.stripe.com/setup/test');
+ for(const url of ['https://connect.stripe.com.evil.invalid/setup','https://evil@connect.stripe.com/setup','http://connect.stripe.com/setup','https://connect.stripe.com:444/setup','https://checkout.stripe.com/setup'])assert.throws(()=>onboardingRedirect(url));
+ f.stripe.v2.core.accountLinks.create=async()=>({account:'acct_other',livemode:false,url:'https://connect.stripe.com/setup/test'});await assert.rejects(()=>f.service.onboarding('owner-a','a@example.invalid'),/configuration needs review/);assert.equal(f.state.locked,false);
+ f.stripe.v2.core.accountLinks.create=async()=>({account:'acct_host',livemode:true,url:'https://connect.stripe.com/setup/test'});await assert.rejects(()=>f.service.onboarding('owner-a','a@example.invalid'),/configuration needs review/);
+});
+test('host onboarding HTTP action cannot accept caller-supplied account or return URL',async()=>{
+ let calls=0;const handler=paymentsHandler({authenticate:async()=>({id:'owner-a',email:'a@example.invalid',aal:'aal2'}),config,service:{onboarding:async(owner,email)=>{calls++;assert.equal(owner,'owner-a');assert.equal(email,'a@example.invalid');return {url:'https://connect.stripe.com/setup/test'};}}});
+ const req=body=>new Request(config.origin,{method:'POST',headers:{authorization:'Bearer example'},body:JSON.stringify(body)});
+ assert.equal((await handler(req({action:'onboarding',return_url:'https://evil.invalid'}))).status,400);assert.equal(calls,0);
+ assert.equal((await handler(req({action:'onboarding',account:'acct_other'}))).status,400);assert.equal(calls,0);
+ assert.equal((await handler(req({action:'onboarding'}))).status,200);assert.equal(calls,1);
 });
 test('subscription checkout reuses pending session and prevents duplicate subscriptions',async()=>{
  const {state,service}=fixture();const one=await service.checkout('owner-a','a@example.invalid','monthly');const two=await service.checkout('owner-a','a@example.invalid','monthly');assert.deepEqual(one,two);assert.equal(state.checkouts,1);
