@@ -19,14 +19,30 @@ jobs:
       - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d
         with:
           gradle-version: '8.11.1'
-      - name: Install SDK
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Set up Android SDK tools
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          log-accepted-android-sdk-licenses: 'false'
+      - name: Verify Android SDK
+        run: |
+          command -v sdkmanager
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/aapt2"
       - name: Test and build pilot APK
         working-directory: android-tv
         run: gradle --no-daemon testDebugUnitTest assembleDebug
+      - name: Check APK and save checksum
+        working-directory: android-tv/app/build/outputs/apk/debug
+        run: |
+          test -s app-debug.apk
+          sha256sum app-debug.apk > treestand-tv-pilot-apk.sha256
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: treestand-tv-pilot-apk
-          path: android-tv/app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            android-tv/app/build/outputs/apk/debug/app-debug.apk
+            android-tv/app/build/outputs/apk/debug/treestand-tv-pilot-apk.sha256
+            android-tv/INSTALL.md
           retention-days: 14
           if-no-files-found: error

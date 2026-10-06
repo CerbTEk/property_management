@@ -36,18 +36,20 @@ public final class MainActivity extends Activity {
  private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
  private TextView text(String value,int size,int color){TextView v=new TextView(this);v.setText(value);v.setTextSize(size);v.setTextColor(color);v.setPadding(0,dp(8),0,dp(8));return v;}
  private void showLayout(){
-  ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setBackgroundColor(Color.rgb(24,40,59));
+  ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setBackgroundColor(Color.rgb(18,60,53));
   root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(48),dp(32),dp(48),dp(32));scroll.addView(root);setContentView(scroll);
-  root.addView(text("TREESTAND · WELCOME",18,Color.rgb(218,191,113)));
-  status=text("Connecting…",22,Color.WHITE);root.addView(status);
+  ImageView brand=new ImageView(this);brand.setImageResource(com.cerbtek.treestandtv.R.drawable.brand_logo);brand.setContentDescription("Treestand Manager");brand.setColorFilter(Color.rgb(245,242,233));brand.setScaleType(ImageView.ScaleType.FIT_CENTER);
+  LinearLayout.LayoutParams brandSize=new LinearLayout.LayoutParams(dp(280),dp(94));brandSize.bottomMargin=dp(12);root.addView(brand,brandSize);
+  root.addView(text("WELCOME",18,Color.rgb(153,204,173)));
+  status=text("Connecting…",22,Color.rgb(245,242,233));root.addView(status);
   content=new LinearLayout(this);content.setOrientation(LinearLayout.VERTICAL);root.addView(content);
   LinearLayout controls=new LinearLayout(this);root.addView(controls);
   Button retry=new Button(this);retry.setText("Refresh display");retry.setOnClickListener(v->fetchDisplay());controls.addView(retry);
-  Button settings=new Button(this);settings.setText("Screen settings");settings.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Screen connection").setMessage("Disconnect this TV to enter a new private screen link. Revoke the link in the host workspace to invalidate all copies.").setPositiveButton("Disconnect",(d,w)->{generation++;handler.removeCallbacks(refresh);token="";getPreferences(MODE_PRIVATE).edit().clear().apply();content.removeAllViews();showSetup();}).setNegativeButton("Keep connection",null).show());controls.addView(settings);
+  Button settings=new Button(this);settings.setText("Screen settings");settings.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Screen connection").setMessage("Disconnect this TV to enter a new pairing code. Revoke this display in the host workspace to invalidate its saved connection.").setPositiveButton("Disconnect",(d,w)->{generation++;handler.removeCallbacks(refresh);token="";getPreferences(MODE_PRIVATE).edit().clear().apply();content.removeAllViews();showSetup();}).setNegativeButton("Keep connection",null).show());controls.addView(settings);
  }
  private void showSetup(){
   content.removeAllViews();status.setText("Connect this TV from Guest Experience → Create pairing code.");
-  EditText input=new EditText(this);input.setSingleLine(true);input.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);input.setHint("Pairing code or private screen link");input.setTextColor(Color.WHITE);input.setHintTextColor(Color.LTGRAY);content.addView(input);
+  EditText input=new EditText(this);input.setSingleLine(true);input.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);input.setHint("Pairing code or private screen link");input.setTextColor(Color.rgb(245,242,233));input.setHintTextColor(Color.rgb(214,233,220));content.addView(input);
   Button connect=new Button(this);connect.setText("Connect screen");content.addView(connect);connect.setOnClickListener(v->{String code=ScreenCredential.pairingCode(input.getText().toString());if(code!=null){pairScreen(code,connect);return;}try{token=ScreenCredential.parse(input.getText().toString());getPreferences(MODE_PRIVATE).edit().putString("screen_token",token).apply();content.removeAllViews();fetchDisplay();}catch(IllegalArgumentException e){status.setText(e.getMessage());}});input.requestFocus();
  }
  private void pairScreen(String code,Button connect){
@@ -78,11 +80,11 @@ public final class MainActivity extends Activity {
  }
  private void render(JSONObject payload)throws Exception{
   JSONObject p=payload.getJSONObject("property"),d=payload.getJSONObject("display");
-  content.addView(text(p.getString("name"),20,Color.rgb(218,191,113)));
-  content.addView(text(d.getString("title").replace("{{guest}}","Guest"),40,Color.WHITE));
-  content.addView(text(d.optString("welcome"),24,Color.WHITE));
-  content.addView(text("Check-in "+p.getString("check_in").substring(0,5)+"  ·  Check-out "+p.getString("check_out").substring(0,5),20,Color.LTGRAY));
+  content.addView(text(p.getString("name"),20,Color.rgb(153,204,173)));
+  content.addView(text(d.getString("title").replace("{{guest}}","Guest"),40,Color.rgb(245,242,233)));
+  content.addView(text(d.optString("welcome"),24,Color.rgb(245,242,233)));
+  content.addView(text("Check-in "+p.getString("check_in").substring(0,5)+"  ·  Check-out "+p.getString("check_out").substring(0,5),20,Color.rgb(214,233,220)));
   String[][] sections={{"Your house guide","guidebook"},{"Explore nearby","recommendations"},{"Need a hand?","contact"}};
-  for(String[] s:sections){String body=d.optString(s[1]);if(!body.isEmpty()){content.addView(text(s[0],26,Color.rgb(218,191,113)));content.addView(text(body,22,Color.WHITE));}}
+  for(String[] s:sections){String body=d.optString(s[1]);if(!body.isEmpty()){content.addView(text(s[0],26,Color.rgb(153,204,173)));content.addView(text(body,22,Color.rgb(245,242,233)));}}
  }
 }
