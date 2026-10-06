@@ -17,7 +17,7 @@ export function Payments({user}){
  }
  const plans=status?.plans||[];
  return <>
-  <div className="payments-intro"><span className="eyebrow">YOUR BUSINESS, YOUR PAYMENTS</span><p>Guest booking payments go to your Stripe account. Your Treestand subscription is paid separately to CerbTek LLC.</p><span className="badge">No CerbTek booking commission</span></div>
+  <div className="payments-intro"><span className="eyebrow">YOUR BUSINESS, YOUR PAYMENTS</span><span className="badge">No CerbTek booking commission</span></div>
   {notice&&<p className="feedback" role="alert">{notice}</p>}
   {!status&&!notice&&<p role="status">Checking payment setup…</p>}
   {status?.mode==='sandbox'&&<div className="notice">Test environment · Stripe test payments do not move real money.</div>}
