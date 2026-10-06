@@ -7,12 +7,14 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  const db=new PGlite({extensions:{btree_gist}});
  const a='00000000-0000-0000-0000-000000000001',b='00000000-0000-0000-0000-000000000002';
  await db.exec(`create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users(id uuid primary key); create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb $$; grant usage on schema auth to authenticated; grant execute on function auth.jwt() to authenticated; grant execute on function auth.uid() to authenticated; insert into auth.users values('${a}'),('${b}'),('3f03551d-89de-4214-aa7a-db7a86fe1735');`);
+ await db.exec(`create schema storage; create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text);alter table storage.objects enable row level security;grant usage on schema storage to authenticated;grant select,insert,delete on storage.objects to authenticated;create function storage.foldername(name text) returns text[] language sql immutable as $$ select string_to_array(regexp_replace(name,'/[^/]+$',''),'/') $$;`);
  await db.exec(await readFile(new URL('../database/schema.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/guest_experience.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/display_devices.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/display_personalization.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/display_pairing.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/display_pairing_lifespan.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../database/display_media.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/calendar_controls.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/host_mfa.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/door_locks.sql',import.meta.url),'utf8'));
@@ -36,7 +38,7 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  // Password-only and missing assurance claims cannot read or write any host table.
  for(const claims of ['{"aal":"aal1"}','{}']){
   await db.query("select set_config('request.jwt.claims',$1,false)",[claims]);
-  for(const table of ['ts_properties','ts_reservations','ts_rates','ts_message_templates','ts_guest_displays','ts_display_devices','ts_locks','ts_lock_assignments'])assert.equal((await db.query(`select * from ${table}`)).rows.length,0);
+  for(const table of ['ts_properties','ts_reservations','ts_rates','ts_message_templates','ts_guest_displays','ts_display_devices','ts_display_images','ts_locks','ts_lock_assignments'])assert.equal((await db.query(`select * from ${table}`)).rows.length,0);
   assert.equal((await db.query('select owner_id,status from ts_ttlock_accounts')).rows.length,0);
   await assert.rejects(()=>db.query(`insert into ts_message_templates(owner_id,name,body) values($1,'Blocked','No')`,[a]),e=>e.code==='42501');
   assert.equal((await db.query(`update ts_properties set name='Blocked' where id=$1 returning id`,[p])).rows.length,0);
@@ -61,6 +63,13 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  assert.equal((await db.query('select * from ts_lock_assignments')).rows.length,0);
  const book=async(owner,arrival,departure,guests=2)=>db.query(`insert into ts_reservations(owner_id,property_id,guest,arrival,departure,guests) values($1,$2,'Synthetic guest',$3,$4,$5) returning id`,[owner,p,arrival,departure,guests]);
  await db.query(`insert into ts_guest_displays(owner_id,property_id,title) values($1,$2,'Welcome')`,[a,p]);
+ const photoPath=p+'/00000000-0000-0000-0000-000000000099.jpg';
+ await db.query(`insert into ts_display_images(owner_id,property_id,object_path,position) values($1,$2,$3,0)`,[a,p,photoPath]);
+ await db.query(`insert into storage.objects(bucket_id,name) values('treestand-display-images',$1)`,[photoPath]);
+ await assert.rejects(()=>db.query(`insert into ts_display_images(owner_id,property_id,object_path,position) values($1,$2,$3,12)`,[a,p,p+'/00000000-0000-0000-0000-000000000098.jpg']),e=>e.code==='23514');
+ await assert.rejects(()=>db.query(`insert into ts_display_images(owner_id,property_id,object_path,position) values($1,$2,$3,1)`,[a,p,b+'/00000000-0000-0000-0000-000000000098.jpg']),e=>e.code==='23514');
+ await db.query(`update ts_guest_displays set house_rules='Quiet hours after 10pm',slideshow_seconds=30 where property_id=$1`,[p]);
+ await assert.rejects(()=>db.query(`update ts_guest_displays set slideshow_seconds=1 where property_id=$1`,[p]),e=>e.code==='23514');
  const device=await db.query(`insert into ts_display_devices(owner_id,property_id,name,token_hash) values($1,$2,'Synthetic TV',$3) returning id`,[a,p,'a'.repeat(64)]);
  await assert.rejects(()=>db.query(`update ts_display_devices set token_hash=$1 where id=$2`,['b'.repeat(64),device.rows[0].id]),e=>e.code==='42501');
  await db.query(`insert into ts_display_devices(owner_id,property_id,name,token_hash,pairing_hash,pairing_expires_at) values($1,$2,'Thirty minute pairing',$3,$4,now()+interval '30 minutes')`,[a,p,'d'.repeat(64),'e'.repeat(64)]);
@@ -79,6 +88,11 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  await book(a,'2026-10-10','2026-10-12');
  await assert.rejects(()=>book(a,'2026-10-10','2026-10-11',3),/Maximum occupancy/);
  await login(b);
+ assert.equal((await db.query('select * from ts_display_images')).rows.length,0);
+ assert.equal((await db.query('select * from storage.objects')).rows.length,0);
+ await assert.rejects(()=>db.query(`insert into storage.objects(bucket_id,name) values('treestand-display-images',$1)`,[photoPath]),e=>e.code==='42501');
+ assert.equal((await db.query(`delete from ts_display_images where object_path=$1 returning id`,[photoPath])).rows.length,0);
+ assert.equal((await db.query(`delete from storage.objects where name=$1 returning id`,[photoPath])).rows.length,0);
  assert.equal((await db.query('select * from ts_display_devices')).rows.length,0);
  assert.equal((await db.query(`update ts_display_devices set revoked=true where id=$1 returning id`,[device.rows[0].id])).rows.length,0);
  await assert.rejects(()=>db.query(`insert into ts_display_devices(owner_id,property_id,name,token_hash) values($1,$2,'Foreign TV',$3)`,[b,p,'c'.repeat(64)]),e=>e.code==='23503');

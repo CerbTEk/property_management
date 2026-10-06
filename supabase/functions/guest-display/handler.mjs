@@ -1,4 +1,5 @@
 import {localClock,currentGuest} from './schedule.mjs';
+import {screenImages} from './media.mjs';
 export async function tokenHash(token){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))).map(b=>b.toString(16).padStart(2,'0')).join('');}
 export function createHandler(admin,clock=()=>new Date()){
  return async req=>{
@@ -30,10 +31,10 @@ export function createHandler(admin,clock=()=>new Date()){
    if(!device)return reply({error:'Screen connection unavailable'},401);
    const [p,d]=await Promise.all([
     admin.from('ts_properties').select('name,check_in,check_out,timezone').eq('id',device.property_id).eq('owner_id',device.owner_id).single(),
-    admin.from('ts_guest_displays').select('title,welcome,guidebook,recommendations,contact,personalize').eq('property_id',device.property_id).eq('owner_id',device.owner_id).maybeSingle()
+    admin.from('ts_guest_displays').select('title,welcome,guidebook,recommendations,contact,personalize,house_rules,slideshow_seconds').eq('property_id',device.property_id).eq('owner_id',device.owner_id).maybeSingle()
    ]);
    if(p.error||d.error)throw Error('Read failed');
-   const display=d.data||{title:'Welcome, {{guest}}',welcome:'Make yourself at home.',guidebook:'',recommendations:'',contact:''};
+   const display=d.data||{title:'Welcome, {{guest}}',welcome:'Make yourself at home.',guidebook:'',recommendations:'',contact:'',house_rules:'',slideshow_seconds:20};
    let guest='Guest';
    if(display.personalize){
     const now=clock(),day=localClock(now,p.data.timezone).day;
@@ -42,8 +43,9 @@ export function createHandler(admin,clock=()=>new Date()){
     guest=currentGuest(bookings.data,p.data,now);
    }
    const {name,check_in,check_out}=p.data;
-   const {title,welcome,guidebook,recommendations,contact}=display;
-   return reply({property:{name,check_in,check_out},display:{title:title.replaceAll('{{guest}}',guest),welcome,guidebook,recommendations,contact}});
+   const {title,welcome,guidebook,recommendations,contact,house_rules='',slideshow_seconds=20}=display;
+   const images=await screenImages(admin,device);
+   return reply({property:{name,check_in,check_out},display:{title:title.replaceAll('{{guest}}',guest),welcome,guidebook,recommendations,contact,house_rules,slideshow_seconds,images}});
   }catch{return reply({error:'Display temporarily unavailable'},503);}
  };
 }
