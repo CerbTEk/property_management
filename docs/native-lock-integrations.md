@@ -6,8 +6,8 @@ Decision, October 6, 2026: prefer direct manufacturer APIs so customers can conn
 | --- | --- | --- | --- |
 | TTLock | Approved developer app, customer app-account token grant | CerbTek client ID/secret and server encryption key; customer sign-in | Owner-scoped sign-in, encrypted tokens, refresh, disconnect and read-only inventory; physical code automation pending |
 | Schlage | Schlage Home API, manufacturer account linking | Business onboarding questionnaire, approval, registered callback and application credentials; confirm fees | Optional Seam inventory; native not implemented |
-| igloohome | iglooconnect authorization-code flow for other account owners | Business partnership, registered HTTPS callback and issued client credentials; confirm fees | Optional Seam inventory; native not implemented |
-| Tedee | Cloud API, OAuth authorization code with PKCE | Register public application for client ID; online bridge, keypad capability and fees to verify | Optional Seam inventory; native not implemented |
+| igloohome | iglooconnect authorization-code flow for other account owners | Business partnership, registered HTTPS callback and issued client credentials; confirm fees | Optional Seam inventory; tested server OAuth foundation, not connected to an HTTP route |
+| Tedee | Cloud API, OAuth authorization code with PKCE | Register public application for client ID; online bridge, keypad capability and fees to verify | Tested server OAuth foundation; approved zero-prefix code planning; native account connection not live |
 | Yale / August | Manufacturer web API partnership | Paid developer program; pricing and model/region coverage need agreement | Optional Seam inventory; native not implemented |
 | Nuki | Web API; commercial authorization/webhooks access to verify | Manufacturer program and exact access terms | Optional connector inventory; six-digit 1–9 PIN rule conflicts with exact phone-last-four |
 | Kwikset | Manufacturer lists integrations, but public direct onboarding not verified | Obtain approved route for exact Halo or other model; no undocumented API assumptions | Optional Seam inventory; native not implemented |
@@ -33,3 +33,11 @@ Clients should see Connect, manufacturer authorization, listing assignment and c
 - Kwikset: https://www.kwikset.com/smart-locks/works-with (partner list; not API onboarding evidence)
 
 Commercial approvals, provider application credentials and hardware tests have not been completed by this document. No vendor application or partnership email has been sent as part of this change.
+
+## October 6 implementation update
+
+`server/native-oauth.mjs` uses pinned oauth4webapi for igloohome and Tedee authorization and refresh. It enforces PKCE/state, fixed callbacks, owner/application binding, transaction expiry, bounded token responses and sanitized errors. This is a tested foundation only: a durable encrypted transaction store, initiating-browser binding, atomic single-use consumption, authenticated callback route and device adapters must be added before enabling customer connections. Schlage OAuth remains pending approved metadata and credentials.
+
+Tedee guest codes use a single leading zero followed by the phone last four digits. Preserve zeros in the suffix and reject codes that fail the manufacturer’s distinct-digit or sequence requirements. Other compatible brands retain the exact four-digit suffix. Nuki remains incompatible.
+
+The Tedee application has been prepared but not submitted; its final company-representation and Terms acceptance require explicit approval. Schlage’s questionnaire requires a registered business address and device forecasts. TTLock developer registration requires secure account creation. No application approval or issued native credentials are claimed.

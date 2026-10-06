@@ -1,4 +1,4 @@
-import {codeCompatibility} from './lock-providers.mjs';
+import {codeCompatibility,lockGuestCode} from './lock-providers.mjs';
 import {savedPhoneCode} from './phone-code.mjs';
 import {validDay} from './model.mjs';
 // Reject missing and repeated wall-clock times rather than guess during DST changes.
@@ -22,7 +22,7 @@ export function guestAccessPlan(property,booking,locks,assignments,{properties=[
  if(end<=start)throw Error('Access must end after it starts.');
  const routes=assignments.filter(a=>a.property_id===property.id&&a.owner_id===property.owner_id).map(a=>{const lock=locks.find(l=>l.id===a.lock_id&&l.owner_id===property.owner_id&&l.enabled);return lock?{...lock,purpose:a.purpose}:null;}).filter(Boolean);
  const code=savedPhoneCode(booking.guest_phone_last4),issues=[],conflicts=[];
- for(const lock of routes){const issue=codeCompatibility(lock);if(issue)issues.push((lock.name||'Lock')+': '+issue);}
+ for(const lock of routes){lock.code=lockGuestCode(lock,code);const issue=codeCompatibility(lock,lock.code);if(issue)issues.push((lock.name||'Lock')+': '+issue);}
  if(!code)issues.push('Add the guest phone number or its last four digits to this booking before creating door access.');
  if(code){
   const ids=new Set(routes.map(l=>l.id));

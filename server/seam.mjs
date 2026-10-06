@@ -72,6 +72,6 @@ export function seamBookingCodeBody({property,booking,locks,assignments,properti
  const lock=plan.locks.find(l=>l.id===lockRecordId);
  if(!lock||lock.provider!=='seam'||!uuid.test(lock.provider_device_id))throw new SeamError('Invalid assigned provider device.','not_assigned');
  if(lock.brand==='ttlock')throw new SeamError('TTLock uses the direct connection in Treestand.','direct_required');
- if(codeCompatibility(lock))throw new SeamError('Device cannot use the guest phone last four.','incompatible');
- return {device_id:lock.provider_device_id,code:plan.code,name:'Treestand guest access',starts_at:new Date(plan.start).toISOString(),ends_at:new Date(plan.end).toISOString(),prefer_native_scheduling:true,attempt_for_offline_device:false,use_backup_access_code_pool:false};
+ if(codeCompatibility(lock,lock.code))throw new SeamError('Device cannot use the guest phone last four.','incompatible');
+ return {device_id:lock.provider_device_id,code:lock.code,name:'Treestand guest access',starts_at:new Date(plan.start).toISOString(),ends_at:new Date(plan.end).toISOString(),prefer_native_scheduling:true,attempt_for_offline_device:false,use_backup_access_code_pool:false};
 }
