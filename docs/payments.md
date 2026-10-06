@@ -40,3 +40,14 @@ Enable Connect on the chosen Stripe platform account using its SaaS configuratio
 Tax classification remains a legal/CPA decision. A direct charge does not by itself resolve NC accommodation-facilitator liability. Stripe Tax does not by itself register a business or file/remit all lodging taxes. No lodging tax rate is hardcoded here. Subscription tax collection stays disabled until reviewed; automatic collection additionally checks for active Stripe registrations. Registration entries must correspond to real government registrations. The `reviewed_no_tax` mode must not be used as a blanket exemption for all jurisdictions.
 
 Validate sandbox host onboarding (including requirements changes), distinct-owner denial, monthly/annual checkout, abandoned checkout, duplicate clicks, renewals, failed payments, cancellation, duplicate/reordered events, invalid signatures, mode/account mismatches and recovery. Validate the physical payment account and payout schedule in Stripe before any live guest payment. Update the permanent site domain, origin, Stripe business website and allowed redirects together. Tests cover core safeguards using synthetic objects and a local database; these do not replace end-to-end Stripe sandbox validation.
+
+## Stripe sandbox provisioned — October 6, 2026
+
+Treestand Property Management is now authorized in the Stripe connector. Live account: `acct_1UNabeGSQLd1K4kY`; separate sandbox: `acct_1UNac2Gk8T1gHOLb`. All resources below were created only in the separate sandbox. ForgeCIF was not changed.
+
+- Product: `prod_treestand_manager`, Treestand Manager, service, no default Price. Amounts remain pending the owner's later choice.
+- Billing portal: `bpc_1UNas8Gk8T1gHOLbLce5VMR5`, default configuration, invoice history, payment method/name/email/address updates, cancellation at period end. Price/quantity switching is disabled until the catalog is approved.
+- Platform subscription webhook: `we_1UNasoGk8T1gHOLb57uOQevl`, API version `2026-08-26.dahlia`, the eight platform-only events above. Delivery is disabled until the matching signing secret and server API key are stored in Supabase. The signing secret is never included in this repository.
+- Connect can list the sandbox's existing test connected accounts; this confirms platform access, not validation of Treestand's own onboarding or charge paths. Existing Stripe-generated test accounts are not linked to a real host workspace.
+
+Blocking runtime step: add the sandbox restricted API key, matching publishable key, webhook signing secret, `TREESTAND_STRIPE_ACCOUNT_ID=acct_1UNac2Gk8T1gHOLb`, and `TREESTAND_STRIPE_MODE=sandbox` in the PMS project's Edge Function Secrets. The available MCP does not write secrets and the local Supabase CLI has no login. Keep Billing disabled. Once secrets are stored, verify the owner-scoped endpoint, enable the sandbox webhook, and complete end-to-end sandbox validation before configuring live payments.
