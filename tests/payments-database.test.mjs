@@ -1,0 +1,22 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+test('payment mappings are server-only; leases fence expired workers and prevent account reuse',async()=>{
+ const db=new PGlite(),a='00000000-0000-0000-0000-000000000001',b='00000000-0000-0000-0000-000000000002';
+ await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);insert into auth.users values('${a}'),('${b}');grant usage on schema public to service_role,anon,authenticated;`);
+ await db.exec(await readFile(new URL('../database/stripe_payments.sql',import.meta.url),'utf8'));
+ await db.exec('set role service_role');
+ const claim=async(owner,live=false)=>(await db.query('select * from ts_claim_stripe_operation($1,$2,$3)',[owner,live,'fixture@example.invalid'])).rows;
+ const row=(await claim(a))[0];assert.equal((await claim(a)).length,0);
+ const snapshot={subscription_id:'sub_fixture',status:'active',price_id:'price_fixture',cancel_at_period_end:false,current_period_end:null};
+ const save=async(token)=>(await db.query('select ts_save_stripe_subscription($1,$2,$3,$4) as saved',[a,false,token,JSON.stringify(snapshot)])).rows[0].saved;
+ assert.equal(await save(row.lease_token),true);
+ await db.query('update ts_stripe_accounts set lease_until=now()-interval \'1 second\' where owner_id=$1',[a]);assert.equal(await save(row.lease_token),false);
+ const fresh=(await claim(a))[0];assert.notEqual(fresh.lease_token,row.lease_token);assert.equal(fresh.creation_key,row.creation_key);assert.equal(await save(row.lease_token),false);assert.equal(await save(fresh.lease_token),true);
+ await db.query('update ts_stripe_accounts set account_id=$1 where owner_id=$2 and livemode=false',['acct_fixture',a]);await claim(b);await assert.rejects(()=>db.query('update ts_stripe_accounts set account_id=$1 where owner_id=$2',['acct_fixture',b]),e=>e.code==='23505');
+ assert.equal((await claim(a,true)).length,1);
+ await db.exec('reset role;set role authenticated');await assert.rejects(()=>claim(a),e=>e.code==='42501');await assert.rejects(()=>db.query('select * from ts_stripe_accounts'),e=>e.code==='42501');await assert.rejects(()=>save(fresh.lease_token),e=>e.code==='42501');
+ await db.exec('reset role;set role anon');await assert.rejects(()=>db.query('select * from ts_stripe_subscriptions'),e=>e.code==='42501');
+ await db.close();
+});
