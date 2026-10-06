@@ -7,7 +7,7 @@ const view={connect_webview_id:viewId,customer_key:owner,connected_account_id:ac
 const device={device_id:deviceId,connected_account_id:account,display_name:'Synthetic Yale',can_program_online_access_codes:true,properties:{online:true,supported_code_lengths:[4,6],address:'private'},secret:'private'};
 const client=(respond)=>seamClient({apiKey:'synthetic',fetcher:async(url,options)=>{assert.equal(new URL(url).origin,'https://connect.getseam.com');assert.equal(options.redirect,'error');return {ok:true,json:async()=>respond(new URL(url),options)};}});
 test('Seam authorization uses owner-scoped customer and an explicit provider list',async()=>{
- const seam=client((url,options)=>{const body=JSON.parse(options.body);assert.equal(body.customer_key,owner);assert.equal(body.any_provider_allowed,false);assert.ok(body.accepted_providers.includes('schlage'));return {connect_webview:view};});
+ const seam=client((url,options)=>{const body=JSON.parse(options.body);assert.equal(body.customer_key,owner);assert.equal(body.any_provider_allowed,false);assert.ok(body.accepted_providers.includes('schlage'));assert.ok(body.accepted_providers.includes('ttlock'));return {connect_webview:view};});
  assert.equal((await seam.connect(owner)).id,viewId);
  await assert.rejects(()=>client(()=>({connect_webview:{...view,customer_key:account}})).connect(owner),e=>e.code==='ownership');
  await assert.rejects(()=>client(()=>({connect_webview:{...view,url:'https://evil.example'}})).connect(owner),e=>e.code==='invalid_response');
