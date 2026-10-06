@@ -10,7 +10,7 @@ export async function invokeLockConnector(client,action,connection_id,credential
 export function connectorLabel(status){
  if(!status)return 'Checking connection setup…';
  if(status.error)return status.error;
- if(!status.configured)return 'Add the Seam server key to connect your locks.';
+ if(!status.configured)return 'Provider connections are being configured by Treestand.';
  if(!status.ready)return 'The provider workspace is suspended.';
  return status.mode==='sandbox'?'Sandbox connected · simulated devices only':'Live workspace verified · ready for provider sign-in';
 }

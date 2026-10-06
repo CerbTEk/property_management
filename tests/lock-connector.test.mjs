@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {invokeLockConnector,connectorLabel} from '../src/lock-connector.mjs';
 test('connection setup distinguishes missing key, sandbox, suspended and live states',()=>{
- assert.match(connectorLabel({configured:false}),/server key/);
+ assert.match(connectorLabel({configured:false}),/configured by Treestand/);
  assert.match(connectorLabel({configured:true,ready:true,mode:'sandbox'}),/simulated/);
  assert.match(connectorLabel({configured:true,ready:false,mode:'live'}),/suspended/);
  assert.match(connectorLabel({configured:true,ready:true,mode:'live'}),/Live workspace verified/);
