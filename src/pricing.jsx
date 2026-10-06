@@ -4,8 +4,8 @@ import {quote,money,nights,validDay} from './model.mjs';
 import {dayNames,stayTypes,todayInZone,addDay,nightRate,priceCalendar,pricePreview,marketAdvice} from './pricing-model.mjs';
 const allDays=[0,1,2,3,4,5,6];
 function Field({label,...props}){return <label>{label}<input required {...props}/></label>}
-export function Pricing({properties,...props}){
- const [selected,setSelected]=useState(properties[0]?.id||'');
+export function Pricing({properties,initialPropertyId,...props}){
+ const [selected,setSelected]=useState(initialPropertyId||properties[0]?.id||'');
  const p=properties.find(p=>p.id===selected)||properties[0];
  if(!p)return <section className="panel"><h2>Your pricing workspace</h2><p>Add a listing in Overview to begin setting prices.</p></section>;
  return <><div className="pricing-heading"><div><span className="eyebrow">YOUR RATES, YOUR CONTROL</span><p>Plan each night, adjust seasons, and compare local rates.</p></div><label>Listing<select value={p.id} onChange={e=>setSelected(e.target.value)}>{properties.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label></div><ListingPricing key={p.id} property={p} {...props}/></>;
