@@ -80,3 +80,26 @@ Receipt code comparisons use HMAC-SHA256 with a dedicated 32-byte server secret 
 Create/update plans require server-verified device observations no older than five minutes: ownership/connection, online state, timed-code support and exact code length. TTLock additionally needs an online gateway and passcode version 4. Cached imported inventory is insufficient. The planning store deliberately supplies no such observations until the live verifier is implemented.
 
 `server/access-worker.mjs` provides a planning runner and Supabase store, with atomic 120-second claims and revision-fenced completion. A concurrent edit or expired lease prevents stale completion. Failed snapshots remain pending until lease expiry. The runner is not scheduled and its returned plans are not executed. Queue completion is planning completion only, never proof of a physical passcode change. Before adding a write worker, persist an uncertain receipt **before** the provider call, verify state afterward, fence every mutation against the current lease/revision, and reconcile timeouts using provider code identities. Save installed/revoked only after provider confirmation. Final live activation still requires credentials, model verification, and a chosen physical test lock.
+
+## Native TTLock execution and test runner
+
+`server/ttlock-access.mjs` implements native gateway create/change/delete requests and passcode inventory verification. Preflight reads the connected account's lock and gateway inventories, checks gateway association, confirms V4 passcodes, and queries lock state through the gateway. It does not unlock the door. The Door locks page now offers **Check gateway and code support** for TTLock devices. Cached capabilities cannot authorize writes.
+
+`server/access-execution.mjs` recomputes each action from a complete current owner snapshot, derives the four-digit guest PIN server-side, refuses unmanaged PIN collisions, and checkpoints an uncertain receipt before sending a request. Existing provider code IDs must match the stored receipt label and protected code tag before update/removal. Each receipt has a unique `Treestand <receipt UUID>` marker. Provider responses are acknowledged separately; exact passcode identity/window verification is required before marking installed, and confirmed absence after an acknowledged delete is required before marking revoked. Timeouts never trigger blind retries. Missing or mismatched results require review. A positive provider confirmation still needs a physical keypad test before launch.
+
+Apply `database/access_execution.sql` after the lifecycle migration. Its checkpoint/acknowledgement/settlement RPCs are service-only and enforce queue ownership, revision, lease expiry and per-operation fencing tokens. Active booking/lock routes cannot have duplicate receipts. An edit racing a provider operation leaves an uncertain receipt for reconciliation rather than overwriting newer work.
+
+`server/ttlock-runner.mjs` and `supabase/functions/treestand-access-runner/index.ts` provide the internal native execution runner. It authenticates against the server service-role credential, accepts no caller-selected owner/device/PIN, processes at most five hosts and one mutation per host per invocation, and limits execution to explicitly selected owner/device pairs. It never routes TTLock through Seam. Hosts outside the test allowlist are not connected to their provider. No scheduled invocation or physical write is enabled by this release.
+
+Platform setup requires `TTLOCK_CLIENT_ID`, `TTLOCK_CLIENT_SECRET`, and a 32-byte hex `TTLOCK_TOKEN_ENCRYPTION_KEY`. The execution runner additionally requires a separate stable 32-byte hex `TREESTAND_ACCESS_FINGERPRINT_KEY`. Keep both keys in Supabase secrets, never browser variables or GitHub. A host connects their own TTLock app account in Treestand. Only after connection, inventory import, assignment and selection of a physical test device should `TTLOCK_AUTOMATION_TEST_DEVICES` contain comma-separated `<owner UUID>:<TTLock device ID>` pairs and `TTLOCK_AUTOMATION_ENABLED` be set to `true`. These are platform test controls, not client onboarding requirements. Cron activation remains a separate step after credentials and the physical test are established. Internal invocation needs no user body and must not expose the service credential in the browser.
+
+Current limitations: the scheduler is not enabled; no physical door has been tested; unknown writes without a verifiable matching receipt remain blocked for review; provider-side manual deletion/edit detection for otherwise unchanged installed receipts still needs a periodic reconciliation sweep. Manufacturers other than TTLock are not handled by this execution worker.
+
+TTLock API documentation checked October 6, 2026:
+- https://euopen.ttlock.com/doc/api/v3/keyboardPwd/add
+- https://euopen.ttlock.com/doc/api/v3/keyboardPwd/change
+- https://euopen.ttlock.com/doc/api/v3/keyboardPwd/delete
+- https://euopen.ttlock.com/doc/api/v3/lock/listKeyboardPwd
+- https://euopen.ttlock.com/doc/api/v3/gateway/listByLock
+- https://euopen.ttlock.com/doc/api/v3/gateway/list
+- https://euopen.ttlock.com/doc/api/v3/lock/queryOpenState

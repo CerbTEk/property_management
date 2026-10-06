@@ -35,7 +35,7 @@ export function ttlockAccounts({clientId,clientSecret,encryptionKey,store,fetche
  async function owned(owner){const row=await store.read(owner);if(row&&row.owner_id!==owner)throw new TTLockError('Connection ownership mismatch.','ownership');return row;}
  async function save(owner,revision,tokens){if(!await store.save(owner,revision,{provider_uid:tokens.uid,sealed_tokens:await vault.seal(owner,tokens),expires_at:tokens.expiresAt,status:'connected'}))throw new TTLockError('The connection changed. Refresh and retry.','connection_changed');}
  return {
-  async status(owner){const row=await owned(owner);return {provider:'ttlock',mode:'direct',configured,connected:row?.status==='connected',ready:configured&&row?.status==='connected',expires_at:row?.status==='connected'?row.expires_at:null};},
+  async status(owner){const row=await owned(owner);return {provider:'ttlock',mode:'direct',configured,setup_pending:[...(!clientId?['developer application ID']:[]),...(!clientSecret?['developer application secret']:[]),...(!/^[a-f0-9]{64}$/i.test(encryptionKey||'')?['secure token storage']:[])],connected:row?.status==='connected',ready:configured&&row?.status==='connected',expires_at:row?.status==='connected'?row.expires_at:null};},
   async connect(owner,username,password){
    if(!configured)throw new TTLockError('Treestand TTLock application setup is incomplete.','not_configured');
    const claim=await store.claim(owner);if(!claim)throw new TTLockError('Wait a few seconds before trying TTLock sign-in again.','rate_limit');

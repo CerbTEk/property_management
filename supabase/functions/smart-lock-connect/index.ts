@@ -2,6 +2,7 @@ import {createClient} from 'npm:@supabase/supabase-js@2.58.0';
 import {seamClient,SeamError} from '../../../server/seam.mjs';
 import {directTTLockConnection} from '../../../server/direct-ttlock.mjs';
 import {ttlockAccounts} from '../../../server/ttlock-auth.mjs';
+import {ttlockAccess} from '../../../server/ttlock-access.mjs';
 import {nativeInventory} from '../../../server/native-inventory.mjs';
 import {nativeAccounts} from '../../../server/native-accounts.mjs';
 import {NativeOAuthError} from '../../../server/native-oauth.mjs';
@@ -24,7 +25,7 @@ Deno.serve(async req=>{
  if(owner!=='3f03551d-89de-4214-aa7a-db7a86fe1735'&&claims.claims.aal!=='aal2')return reply({error:'Authenticator verification required.'},403);
  if(Number(req.headers.get('content-length'))>4096)return reply({error:'Request too large.'},413);
  let body;try{const raw=await req.text();if(raw.length>4096)return reply({error:'Request too large.'},413);body=JSON.parse(raw);if(!body||typeof body!=='object'||Array.isArray(body))return reply({error:'Invalid request.'},400);}catch{return reply({error:'Invalid request.'},400);}
- if(['ttlock_status','ttlock_connect','ttlock_disconnect','ttlock_sync'].includes(body.action)){
+ if(['ttlock_status','ttlock_connect','ttlock_disconnect','ttlock_sync','ttlock_preflight'].includes(body.action)){
   const admin=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
   const store={
    async read(ownerId){const {data,error}=await admin.from('ts_ttlock_accounts').select('*').eq('owner_id',ownerId).maybeSingle();if(error)throw Error('storage');return data;},
@@ -41,6 +42,23 @@ Deno.serve(async req=>{
     return reply(result);
    }
    const accountToken=await accounts.accessToken(owner);
+   if(body.action==='ttlock_preflight'){
+    if(typeof body.lock_id!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(body.lock_id))return reply({error:'Choose a TTLock device.'},400);
+    const {data:lock,error}=await admin.from('ts_locks').select('id,provider,provider_lock_id,capabilities').eq('id',body.lock_id).eq('owner_id',owner).maybeSingle();
+    if(error)throw Error('storage');
+    if(!lock||lock.provider!=='ttlock'||!lock.provider_lock_id)return reply({error:'TTLock device unavailable.'},404);
+    const account=await store.read(owner);
+    const access=ttlockAccess({clientId:Deno.env.get('TTLOCK_CLIENT_ID'),accessToken:accountToken,ownerId:owner});
+    const observation=await access.observe(lock.provider_lock_id);
+    const current=await store.read(owner);
+    if(current?.status!=='connected'||current.revision!==account?.revision)throw new TTLockError('The connection changed. Recheck before verifying the device.','connection_changed');
+    const saved=await admin.from('ts_locks').update({provider_device_id:observation.device_id,online:observation.online,synced_at:observation.observed_at,
+     capabilities:{...lock.capabilities,online_codes:observation.timed_codes,code_lengths:observation.code_lengths,passcode_version:observation.passcode_version,gateway_online:observation.gateway_online}})
+     .eq('id',lock.id).eq('owner_id',owner).eq('provider_lock_id',lock.provider_lock_id).select('id');
+    if(saved.error||saved.data?.length!==1)throw new TTLockError('The device changed. Refresh and verify again.','connection_changed');
+    return reply({verified:observation.timed_codes,online:observation.online,gateway_online:observation.gateway_online,passcode_version:observation.passcode_version,
+     message:observation.timed_codes?'Gateway and timed-code capability verified. Physical keypad testing is still required.':'The device needs an online gateway and compatible V4 passcodes before automatic access can be enabled.'});
+   }
    const direct=directTTLockConnection({ownerId:owner,env:name=>Deno.env.get(name),accountToken});
    const inventory=await direct.inventory();
    for(const lock of inventory.locks){
