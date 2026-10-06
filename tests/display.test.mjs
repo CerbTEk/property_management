@@ -13,10 +13,10 @@ test('device endpoint denies missing, guessed, revoked and expired credentials b
 });
 test('valid device returns only its room welcome content with no-store and owner filters',async()=>{
  const log=[];
- const admin={from(table){const chain={select(fields){log.push([table,'select',fields]);return this;},eq(k,v){log.push([table,k,v]);return this;},gt(k,v){log.push([table,k,v]);return this;},order(){return this;},limit:async()=>({data:[],error:null}),async maybeSingle(){return {data:table==='ts_display_devices'?{owner_id:'owner-a',property_id:'room-a'}:{title:'Welcome',welcome:'Hello',guidebook:'Rules',recommendations:'Places',contact:'Host'}};},async single(){return {data:{name:'Room A',check_in:'15:00',check_out:'11:00'}};}};return chain;}};
+ const admin={from(table){const chain={select(fields){log.push([table,'select',fields]);return this;},eq(k,v){log.push([table,k,v]);return this;},gt(k,v){log.push([table,k,v]);return this;},order(){return this;},limit:async()=>({data:[],error:null}),async maybeSingle(){return {data:table==='ts_display_devices'?{owner_id:'owner-a',property_id:'room-a'}:{title:'Welcome',welcome:'Hello',guidebook:'Rules',recommendations:'Places',contact:'Host',music_enabled:true,music_default:'evening',music_volume:20}};},async single(){return {data:{name:'Room A',check_in:'15:00',check_out:'11:00'}};}};return chain;}};
  const handler=createHandler(admin);const response=await handler(new Request('https://display',{headers:{Authorization:'Bearer '+'a'.repeat(64)}}));
  assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');
- const body=await response.json();assert.deepEqual(Object.keys(body),['property','display']);
+ const body=await response.json();assert.deepEqual(Object.keys(body),['property','display']);assert.equal(body.display.music_default,'evening');assert.equal(body.display.music_volume,20);
  assert.ok(log.some(x=>x[0]==='ts_display_devices'&&x[1]==='revoked'&&x[2]===false));
  assert.ok(log.some(x=>x[0]==='ts_display_devices'&&x[1]==='expires_at'));
  for(const table of ['ts_properties','ts_guest_displays'])assert.ok(log.some(x=>x[0]===table&&x[1]==='owner_id'&&x[2]==='owner-a'));

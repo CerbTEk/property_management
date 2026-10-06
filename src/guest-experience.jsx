@@ -2,8 +2,9 @@ import React,{useState} from 'react';
 import {db} from './backend';
 import {DisplayDevices} from './display-devices';
 import {DisplayImages} from './display-images';
+import {musicChoices} from './tv-music.mjs';
 import {TvWelcome} from './tv-welcome';
-const defaults={title:'Welcome, {{guest}}',welcome:'Make yourself at home. We hope you enjoy your stay.',guidebook:'',recommendations:'',contact:'',house_rules:'',slideshow_seconds:20,personalize:false};
+const defaults={title:'Welcome, {{guest}}',welcome:'Make yourself at home. We hope you enjoy your stay.',guidebook:'',recommendations:'',contact:'',house_rules:'',slideshow_seconds:20,music_enabled:true,music_default:'woodland',music_volume:15,personalize:false};
 export function GuestExperience({properties,reservations,displays,user,onSaved}){
  const [propertyId,setPropertyId]=useState(properties[0]?.id||''),[photos,setPhotos]=useState({propertyId:'',images:[]});
  const property=properties.find(p=>p.id===propertyId);
@@ -14,7 +15,7 @@ export function GuestExperience({properties,reservations,displays,user,onSaved})
 function DisplayEditor({property,saved,images,bookings,user,onSaved}){
  const [draft,setDraft]=useState({...defaults,...saved}),[bookingId,setBookingId]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[preview,setPreview]=useState(false);
  const guest=bookings.find(b=>b.id===bookingId)?.guest.trim().split(/\s+/)[0]||'Guest';
- function change(e){setDraft({...draft,[e.target.name]:e.target.type==='checkbox'?e.target.checked:e.target.name==='slideshow_seconds'?Number(e.target.value):e.target.value});setNotice('Unsaved changes.');}
+ function change(e){setDraft({...draft,[e.target.name]:e.target.type==='checkbox'?e.target.checked:['slideshow_seconds','music_volume'].includes(e.target.name)?Number(e.target.value):e.target.value});setNotice('Unsaved changes.');}
  async function save(e){e.preventDefault();setBusy(true);setNotice('');try{
   const values=Object.fromEntries(Object.keys(defaults).map(k=>[k,draft[k]]));
   const {error}=await db.from('ts_guest_displays').upsert({...values,owner_id:user.id,property_id:property.id},{onConflict:'property_id'});
@@ -24,7 +25,7 @@ function DisplayEditor({property,saved,images,bookings,user,onSaved}){
  <label>Welcome title<input name="title" required maxLength="120" value={draft.title} onChange={change}/></label><p>Use {'{{guest}}'} to insert the selected reservation’s first name.</p>
  <label className="toggle-setting"><input type="checkbox" name="personalize" checked={draft.personalize} onChange={change}/> Show the current guest’s first name on connected screens</label><p>Uses confirmed bookings saved in Treestand, from check-in until check-out in this listing’s timezone. Outside a stay, the screen says Guest. Airbnb booking sync is still pending.</p>
  <label>Welcome message<textarea name="welcome" rows="3" maxLength="2000" value={draft.welcome} onChange={change}/></label>
- <label>Photo rotation<select name="slideshow_seconds" value={draft.slideshow_seconds} onChange={change}>{[10,20,30,60].map(seconds=><option key={seconds} value={seconds}>Every {seconds} seconds</option>)}</select></label><label>House rules<textarea name="house_rules" rows="7" maxLength="10000" placeholder="Quiet hours, smoking, visitors, pets, parking and checkout expectations" value={draft.house_rules} onChange={change}/></label><p>Guests can open House Rules on their TV. Save changes here to update every connected screen for this listing within one minute.</p><label>House guide<textarea name="guidebook" rows="7" maxLength="10000" placeholder="Arrival instructions and useful information" value={draft.guidebook} onChange={change}/></label>
+ <label>Photo rotation<select name="slideshow_seconds" value={draft.slideshow_seconds} onChange={change}>{[10,20,30,60].map(seconds=><option key={seconds} value={seconds}>Every {seconds} seconds</option>)}</select></label><label className="toggle-setting"><input type="checkbox" name="music_enabled" checked={draft.music_enabled} onChange={change}/> Play tranquil music automatically on guest TVs</label>{draft.music_enabled&&<><label>Default music<select name="music_default" value={draft.music_default} onChange={change}>{musicChoices.map(option=><option key={option.id} value={option.id}>{option.name}</option>)}</select></label><label>Starting music volume<select name="music_volume" value={draft.music_volume} onChange={change}>{[0,5,10,15,20,25,30,35,40].map(value=><option key={value} value={value}>{value}%</option>)}</select></label><p>Original ambient instrumentals. Music starts automatically with the welcome screen. Guests can pause, choose a mood or adjust the volume. If the TV browser blocks autoplay, its first remote input enables sound. Music stops when the screen is disconnected or the browser is hidden.</p></>}<label>House rules<textarea name="house_rules" rows="7" maxLength="10000" placeholder="Quiet hours, smoking, visitors, pets, parking and checkout expectations" value={draft.house_rules} onChange={change}/></label><p>Guests can open House Rules on their TV. Save changes here to update every connected screen for this listing within one minute.</p><label>House guide<textarea name="guidebook" rows="7" maxLength="10000" placeholder="Arrival instructions and useful information" value={draft.guidebook} onChange={change}/></label>
  <label>Local recommendations<textarea name="recommendations" rows="4" maxLength="4000" value={draft.recommendations} onChange={change}/></label>
  <label>Host contact details<textarea name="contact" rows="2" maxLength="500" value={draft.contact} onChange={change}/></label>
  <button disabled={busy}>{busy?'Saving…':'Save display settings'}</button>{notice&&<p role="status">{notice}</p>}

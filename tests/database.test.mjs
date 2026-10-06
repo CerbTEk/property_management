@@ -15,6 +15,7 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  await db.exec(await readFile(new URL('../database/display_pairing.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/display_pairing_lifespan.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/display_media.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../database/display_music.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/calendar_controls.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/host_mfa.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/door_locks.sql',import.meta.url),'utf8'));
@@ -70,6 +71,9 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  await assert.rejects(()=>db.query(`insert into ts_display_images(owner_id,property_id,object_path,position) values($1,$2,$3,1)`,[a,p,b+'/00000000-0000-0000-0000-000000000098.jpg']),e=>e.code==='23514');
  await db.query(`update ts_guest_displays set house_rules='Quiet hours after 10pm',slideshow_seconds=30 where property_id=$1`,[p]);
  await assert.rejects(()=>db.query(`update ts_guest_displays set slideshow_seconds=1 where property_id=$1`,[p]),e=>e.code==='23514');
+ await db.query(`update ts_guest_displays set music_enabled=true,music_default='evening',music_volume=20 where property_id=$1`,[p]);
+ await assert.rejects(()=>db.query(`update ts_guest_displays set music_volume=100 where property_id=$1`,[p]),e=>e.code==='23514');
+ await assert.rejects(()=>db.query(`update ts_guest_displays set music_default='unknown' where property_id=$1`,[p]),e=>e.code==='23514');
  const device=await db.query(`insert into ts_display_devices(owner_id,property_id,name,token_hash) values($1,$2,'Synthetic TV',$3) returning id`,[a,p,'a'.repeat(64)]);
  await assert.rejects(()=>db.query(`update ts_display_devices set token_hash=$1 where id=$2`,['b'.repeat(64),device.rows[0].id]),e=>e.code==='42501');
  await db.query(`insert into ts_display_devices(owner_id,property_id,name,token_hash,pairing_hash,pairing_expires_at) values($1,$2,'Thirty minute pairing',$3,$4,now()+interval '30 minutes')`,[a,p,'d'.repeat(64),'e'.repeat(64)]);

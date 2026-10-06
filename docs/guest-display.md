@@ -27,3 +27,9 @@ The browser guest screen has generated woodland starter images, a slow crossfade
 Hosts can preview the current draft and uploaded photos full screen. `/display/demo` is a clearly marked public sample with fictional content and no host data. The installed Java Android pilot still renders its existing text layout; this new visual experience is delivered by the TV browser, including LG webOS.
 
 Starter scenes are generated generic landscape artwork, not photos of any actual listing: sunrise woodland lake, sunlit forest path and mountain sunset. Assets: `public/tv-scenes/woodland-lake.webp`, `forest-path.webp`, `mountain-sunset.webp`. Generated using the built-in image tool with prompts for wide, natural, comforting landscapes, warm evergreen/honey tones, no people/buildings/text/logos/watermarks.
+
+## Automatic tranquil music
+
+Apply `database/display_music.sql`. Hosts can enable/disable automatic music, select Woodland Calm / Evening Drift / Quiet Shores and choose starting volume from 0–40%. These are original, locally synthesized ambient instrumentals using soft sine harmonics, slow chord progressions and gentle note envelopes. No external recordings or streaming accounts are used.
+
+The TV attempts playback when the welcome screen mounts. Browser autoplay restrictions may require a remote interaction; in that case it retries on a trusted pointer/key input and displays its waiting state. Guests retain pause, mood and volume controls. Guest pause is respected on return to the screen. Audio stops on hidden/disconnected/revoked screens and unmount, and attempts to resume when the visible screen returns unless the guest paused it. Host defaults update on the usual minute refresh. Failed audio permission times out and closes its context; unsupported browsers show an error. Physical audio validation on LG webOS remains required. The native Android Java pilot is unchanged.

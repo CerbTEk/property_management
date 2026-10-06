@@ -31,7 +31,7 @@ export function createHandler(admin,clock=()=>new Date()){
    if(!device)return reply({error:'Screen connection unavailable'},401);
    const [p,d]=await Promise.all([
     admin.from('ts_properties').select('name,check_in,check_out,timezone').eq('id',device.property_id).eq('owner_id',device.owner_id).single(),
-    admin.from('ts_guest_displays').select('title,welcome,guidebook,recommendations,contact,personalize,house_rules,slideshow_seconds').eq('property_id',device.property_id).eq('owner_id',device.owner_id).maybeSingle()
+    admin.from('ts_guest_displays').select('title,welcome,guidebook,recommendations,contact,personalize,house_rules,slideshow_seconds,music_enabled,music_default,music_volume').eq('property_id',device.property_id).eq('owner_id',device.owner_id).maybeSingle()
    ]);
    if(p.error||d.error)throw Error('Read failed');
    const display=d.data||{title:'Welcome, {{guest}}',welcome:'Make yourself at home.',guidebook:'',recommendations:'',contact:'',house_rules:'',slideshow_seconds:20};
@@ -43,9 +43,9 @@ export function createHandler(admin,clock=()=>new Date()){
     guest=currentGuest(bookings.data,p.data,now);
    }
    const {name,check_in,check_out}=p.data;
-   const {title,welcome,guidebook,recommendations,contact,house_rules='',slideshow_seconds=20}=display;
+   const {title,welcome,guidebook,recommendations,contact,house_rules='',slideshow_seconds=20,music_enabled=true,music_default='woodland',music_volume=15}=display;
    const images=await screenImages(admin,device);
-   return reply({property:{name,check_in,check_out},display:{title:title.replaceAll('{{guest}}',guest),welcome,guidebook,recommendations,contact,house_rules,slideshow_seconds,images}});
+   return reply({property:{name,check_in,check_out},display:{title:title.replaceAll('{{guest}}',guest),welcome,guidebook,recommendations,contact,house_rules,slideshow_seconds,music_enabled,music_default,music_volume,images}});
   }catch{return reply({error:'Display temporarily unavailable'},503);}
  };
 }
