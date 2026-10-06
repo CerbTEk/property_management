@@ -1,5 +1,5 @@
-export async function invokeLockConnector(client,action,connection_id){
- const {data,error}=await client.functions.invoke('smart-lock-connect',{body:{action,connection_id}});
+export async function invokeLockConnector(client,action,connection_id,credentials={}){
+ const {data,error}=await client.functions.invoke('smart-lock-connect',{body:{...credentials,action,connection_id}});
  if(error){let detail;try{detail=await error.context?.json();}catch{}
   const failure=Error(detail?.error||'Lock connector is unavailable. Recheck setup and try again.');
   failure.code=detail?.code||'unavailable';throw failure;

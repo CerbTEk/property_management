@@ -17,13 +17,23 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  await db.exec(await readFile(new URL('../database/door_locks.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/guest_phone_code.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/multi_brand_locks.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../database/ttlock_accounts.sql',import.meta.url),'utf8'));
  const login=async id=>{await db.exec(`reset role; set role authenticated; select set_config('request.jwt.claims','{"aal":"aal2"}',false); select set_config('request.jwt.claim.sub','${id}',false);`);};
+ await db.exec(`insert into ts_ttlock_accounts(owner_id,provider_uid,status,sealed_tokens,expires_at) values('${a}','123','connected','synthetic-cipher',now()+interval '1 day');`);
+ assert.equal((await db.query('select * from ts_claim_ttlock_connect($1)',[a])).rows.length,1);
+ assert.equal((await db.query('select * from ts_claim_ttlock_connect($1)',[a])).rows.length,0);
+ await login(a);
+ assert.equal((await db.query('select owner_id,status from ts_ttlock_accounts')).rows.length,1);
+ await assert.rejects(()=>db.query('select sealed_tokens from ts_ttlock_accounts'),e=>e.code==='42501');
+ await assert.rejects(()=>db.query(`select * from ts_claim_ttlock_connect($1)`,[a]),e=>e.code==='42501');
+ await login(b);assert.equal((await db.query('select owner_id,status from ts_ttlock_accounts')).rows.length,0);
  await login(a);
  const result=await db.query(`insert into ts_properties(owner_id,name,weekday_cents,weekend_cents) values($1,'Pilot room',5600,7000) returning id`,[a]);const p=result.rows[0].id;
  // Password-only and missing assurance claims cannot read or write any host table.
  for(const claims of ['{"aal":"aal1"}','{}']){
   await db.query("select set_config('request.jwt.claims',$1,false)",[claims]);
   for(const table of ['ts_properties','ts_reservations','ts_rates','ts_message_templates','ts_guest_displays','ts_display_devices','ts_locks','ts_lock_assignments'])assert.equal((await db.query(`select * from ${table}`)).rows.length,0);
+  assert.equal((await db.query('select owner_id,status from ts_ttlock_accounts')).rows.length,0);
   await assert.rejects(()=>db.query(`insert into ts_message_templates(owner_id,name,body) values($1,'Blocked','No')`,[a]),e=>e.code==='42501');
   assert.equal((await db.query(`update ts_properties set name='Blocked' where id=$1 returning id`,[p])).rows.length,0);
  }

@@ -1,6 +1,7 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.58.0';
 import {seamClient,SeamError} from '../../../server/seam.mjs';
 import {directTTLockConnection} from '../../../server/direct-ttlock.mjs';
+import {ttlockAccounts} from '../../../server/ttlock-auth.mjs';
 import {TTLockError} from '../../../server/ttlock.mjs';
 const origin='https://treestand-manager.webflow.io';
 const headers={'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization,apikey,content-type,x-client-info','Access-Control-Allow-Methods':'POST,OPTIONS','Vary':'Origin'};
@@ -20,12 +21,25 @@ Deno.serve(async req=>{
  if(owner!=='3f03551d-89de-4214-aa7a-db7a86fe1735'&&claims.claims.aal!=='aal2')return reply({error:'Authenticator verification required.'},403);
  if(Number(req.headers.get('content-length'))>2048)return reply({error:'Request too large.'},413);
  let body;try{const raw=await req.text();if(raw.length>2048)return reply({error:'Request too large.'},413);body=JSON.parse(raw);if(!body||typeof body!=='object'||Array.isArray(body))return reply({error:'Invalid request.'},400);}catch{return reply({error:'Invalid request.'},400);}
- if(body.action==='ttlock_status'||body.action==='ttlock_sync'){
-  const direct=directTTLockConnection({ownerId:owner,env:name=>Deno.env.get(name)});
-  if(body.action==='ttlock_status')return reply(direct.status());
+ if(['ttlock_status','ttlock_connect','ttlock_disconnect','ttlock_sync'].includes(body.action)){
+  const admin=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
+  const store={
+   async read(ownerId){const {data,error}=await admin.from('ts_ttlock_accounts').select('*').eq('owner_id',ownerId).maybeSingle();if(error)throw Error('storage');return data;},
+   async claim(ownerId){const {data,error}=await admin.rpc('ts_claim_ttlock_connect',{p_owner:ownerId});if(error)throw Error('storage');return data?.[0]||null;},
+   async save(ownerId,revision,values){const {data,error}=await admin.from('ts_ttlock_accounts').update({...values,revision:crypto.randomUUID(),updated_at:new Date().toISOString()}).eq('owner_id',ownerId).eq('revision',revision).select('owner_id');if(error)throw Error('storage');return data?.length===1;}
+  };
+  const accounts=ttlockAccounts({clientId:Deno.env.get('TTLOCK_CLIENT_ID'),clientSecret:Deno.env.get('TTLOCK_CLIENT_SECRET'),encryptionKey:Deno.env.get('TTLOCK_TOKEN_ENCRYPTION_KEY'),store});
   try{
+   if(body.action==='ttlock_status')return reply(await accounts.status(owner));
+   if(body.action==='ttlock_connect')return reply(await accounts.connect(owner,body.username,body.password));
+   if(body.action==='ttlock_disconnect'){
+    const result=await accounts.disconnect(owner);
+    const {error}=await admin.from('ts_locks').update({online:null,synced_at:null,capabilities:{}}).eq('owner_id',owner).eq('provider','ttlock');if(error)throw Error('storage');
+    return reply(result);
+   }
+   const accountToken=await accounts.accessToken(owner);
+   const direct=directTTLockConnection({ownerId:owner,env:name=>Deno.env.get(name),accountToken});
    const inventory=await direct.inventory();
-   const admin=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
    for(const lock of inventory.locks){
     const {data:existing,error}=await admin.from('ts_locks').select('id,provider').eq('owner_id',owner).eq('provider_lock_id',lock.provider_lock_id).maybeSingle();
     if(error)throw Error('storage');
@@ -34,7 +48,7 @@ Deno.serve(async req=>{
     if(result.error)throw Error('storage');
    }
    return reply({imported:inventory.locks.length,mode:'direct',gateways:inventory.gateways});
-  }catch(e){return reply({error:e instanceof TTLockError?e.message:'Direct TTLock inventory could not be saved.',code:e instanceof TTLockError?e.code:'unavailable'},e instanceof TTLockError&&e.code==='ownership'?403:502);}
+  }catch(e){return reply({error:e instanceof TTLockError?e.message:'TTLock connection could not be saved.',code:e instanceof TTLockError?e.code:'unavailable'},e instanceof TTLockError&&e.code==='ownership'?403:e instanceof TTLockError&&e.code==='rate_limit'?429:502);}
  }
  const apiKey=Deno.env.get('SEAM_API_KEY');
  if(body.action==='status'&&!apiKey)return reply({configured:false,ready:false,mode:null});

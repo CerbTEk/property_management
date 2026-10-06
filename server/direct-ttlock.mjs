@@ -1,9 +1,9 @@
 import {ttlockInventory,TTLockError} from './ttlock.mjs';
-// Deployment credentials belong to the pilot owner only. Never reuse them for another host.
+// Customer tokens come from the owner-bound server vault. Legacy pilot credentials are owner-restricted.
 export const directTTLockOwner='3f03551d-89de-4214-aa7a-db7a86fe1735';
-export function directTTLockConnection({ownerId,env,fetcher=fetch}){
- const authorized=ownerId===directTTLockOwner;
- const clientId=authorized?env('TTLOCK_CLIENT_ID'):null,accessToken=authorized?env('TTLOCK_ACCESS_TOKEN'):null;
+export function directTTLockConnection({ownerId,env,fetcher=fetch,accountToken}){
+ const authorized=Boolean(accountToken)||ownerId===directTTLockOwner;
+ const clientId=authorized?env('TTLOCK_CLIENT_ID'):null,accessToken=accountToken||(authorized?env('TTLOCK_ACCESS_TOKEN'):null);
  return {
   status(){return {provider:'ttlock',mode:'direct',configured:Boolean(clientId&&accessToken),ready:Boolean(clientId&&accessToken),account_setup_required:!authorized};},
   async inventory(){
