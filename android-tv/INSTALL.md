@@ -4,7 +4,7 @@ This debug-signed APK is for your own Android TV / Google TV pilot. It is not a 
 
 1. Download the APK and SHA-256 file from the same successful GitHub Actions build. Extract the ZIP first. Verify the APK hash matches the checksum before installing.
 2. Transfer app-debug.apk to your TV using your normal trusted local transfer method. Allow installation for that installer only if your TV asks. Install Treestand TV. Turn the installer permission off again when finished.
-3. In the Treestand host workspace, open Guest Experience. Save the correct listing welcome content, create a named display, and generate its pairing code. Codes expire after nine minutes and can be claimed once.
+3. In the Treestand host workspace, open Guest Experience. Save the correct listing welcome content, create a named display, and generate its pairing code. Codes expire after 30 minutes and can be claimed once.
 4. Open Treestand TV from the TV launcher and enter the pairing code. Confirm the listing and guide content match this room.
 5. Test remote navigation, scrolling, reopening, content updates, lost-network clearing, and host-side display revocation before guest use.
 

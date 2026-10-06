@@ -12,6 +12,7 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  await db.exec(await readFile(new URL('../database/display_devices.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/display_personalization.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/display_pairing.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../database/display_pairing_lifespan.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/calendar_controls.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/host_mfa.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../database/door_locks.sql',import.meta.url),'utf8'));
@@ -62,6 +63,8 @@ test('actual schema rejects foreign accounts, overlap and invalid occupancy',asy
  await db.query(`insert into ts_guest_displays(owner_id,property_id,title) values($1,$2,'Welcome')`,[a,p]);
  const device=await db.query(`insert into ts_display_devices(owner_id,property_id,name,token_hash) values($1,$2,'Synthetic TV',$3) returning id`,[a,p,'a'.repeat(64)]);
  await assert.rejects(()=>db.query(`update ts_display_devices set token_hash=$1 where id=$2`,['b'.repeat(64),device.rows[0].id]),e=>e.code==='42501');
+ await db.query(`insert into ts_display_devices(owner_id,property_id,name,token_hash,pairing_hash,pairing_expires_at) values($1,$2,'Thirty minute pairing',$3,$4,now()+interval '30 minutes')`,[a,p,'d'.repeat(64),'e'.repeat(64)]);
+ for(const expiry of ['31 minutes','-1 minute'])await assert.rejects(()=>db.query(`insert into ts_display_devices(owner_id,property_id,name,token_hash,pairing_hash,pairing_expires_at) values($1,$2,'Invalid expiry',$3,$4,now()+$5::interval)`,[a,p,'f'.repeat(64),'9'.repeat(64),expiry]),e=>e.code==='42501');
  const first=await book(a,'2026-10-05','2026-10-07');
  await db.query(`update ts_reservations set guest_phone_last4='0042' where id=$1`,[first.rows[0].id]);
  assert.equal((await db.query(`select guest_phone_last4 from ts_reservations where id=$1`,[first.rows[0].id])).rows[0].guest_phone_last4,'0042');
