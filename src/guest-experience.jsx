@@ -5,8 +5,8 @@ import {DisplayImages} from './display-images';
 import {musicChoices} from './tv-music.mjs';
 import {TvWelcome} from './tv-welcome';
 const defaults={title:'Welcome, {{guest}}',welcome:'Make yourself at home. We hope you enjoy your stay.',guidebook:'',recommendations:'',contact:'',house_rules:'',slideshow_seconds:20,music_enabled:true,music_default:'woodland',music_volume:15,personalize:false};
-export function GuestExperience({properties,reservations,displays,user,onSaved}){
- const [propertyId,setPropertyId]=useState(properties[0]?.id||''),[photos,setPhotos]=useState({propertyId:'',images:[]});
+export function GuestExperience({properties,reservations,displays,user,onSaved,initialPropertyId}){
+ const [propertyId,setPropertyId]=useState(initialPropertyId||properties[0]?.id||''),[photos,setPhotos]=useState({propertyId:'',images:[]});
  const property=properties.find(p=>p.id===propertyId);
  if(!property)return <section className="panel"><h2>Guest Experience</h2><p>Add a listing in Overview to create its welcome display and guidebook.</p></section>;
  const saved=displays.find(d=>d.property_id===propertyId);

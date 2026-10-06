@@ -5,8 +5,9 @@ import {db,insert,updateRecord} from './backend';
 import {lockBrands} from './lock-providers.mjs';
 import {invokeLockConnector,connectorLabel} from './lock-connector.mjs';
 import {guestAccessPlan} from './lock-model.mjs';
-export function DoorLocks({data,user,busy,onAction}){
- const [bookingId,setBookingId]=useState('');
+export function DoorLocks({data,user,busy,onAction,initialBookingId}){
+ const [bookingId,setBookingId]=useState(initialBookingId||'');
+ useEffect(()=>{if(initialBookingId){setBookingId(initialBookingId);accessPanel.current?.scrollIntoView({behavior:'smooth',block:'start'});}},[initialBookingId]);
  const accessPanel=useRef(null);
  function reviewAccess(id){setBookingId(id);accessPanel.current?.scrollIntoView({behavior:'smooth',block:'start'});}
  const [brand,setBrand]=useState('ttlock'),[connectionUrl,setConnectionUrl]=useState(''),[connectorStatus,setConnectorStatus]=useState(null),[syncResult,setSyncResult]=useState(''),[directStatus,setDirectStatus]=useState(null);
