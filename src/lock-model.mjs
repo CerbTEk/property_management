@@ -22,6 +22,7 @@ export function guestAccessPlan(property,booking,locks,assignments,{properties=[
  if(end<=start)throw Error('Access must end after it starts.');
  const routes=assignments.filter(a=>a.property_id===property.id&&a.owner_id===property.owner_id).map(a=>{const lock=locks.find(l=>l.id===a.lock_id&&l.owner_id===property.owner_id&&l.enabled);return lock?{...lock,purpose:a.purpose}:null;}).filter(Boolean);
  const code=savedPhoneCode(booking.guest_phone_last4),issues=[],conflicts=[];
+ if(!routes.length)issues.push("No enabled lock is assigned to this listing. Assign a lock before preparing guest access.");
  for(const lock of routes){lock.code=lockGuestCode(lock,code);const issue=codeCompatibility(lock,lock.code);if(issue)issues.push((lock.name||'Lock')+': '+issue);}
  if(!code)issues.push('Add the guest phone number or its last four digits to this booking before creating door access.');
  if(code){
