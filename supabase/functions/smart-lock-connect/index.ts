@@ -1,5 +1,7 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.58.0';
 import {seamClient,SeamError} from '../../../server/seam.mjs';
+import {directTTLockConnection} from '../../../server/direct-ttlock.mjs';
+import {TTLockError} from '../../../server/ttlock.mjs';
 const origin='https://treestand-manager.webflow.io';
 const headers={'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization,apikey,content-type,x-client-info','Access-Control-Allow-Methods':'POST,OPTIONS','Vary':'Origin'};
 Deno.serve(async req=>{
@@ -18,6 +20,22 @@ Deno.serve(async req=>{
  if(owner!=='3f03551d-89de-4214-aa7a-db7a86fe1735'&&claims.claims.aal!=='aal2')return reply({error:'Authenticator verification required.'},403);
  if(Number(req.headers.get('content-length'))>2048)return reply({error:'Request too large.'},413);
  let body;try{const raw=await req.text();if(raw.length>2048)return reply({error:'Request too large.'},413);body=JSON.parse(raw);if(!body||typeof body!=='object'||Array.isArray(body))return reply({error:'Invalid request.'},400);}catch{return reply({error:'Invalid request.'},400);}
+ if(body.action==='ttlock_status'||body.action==='ttlock_sync'){
+  const direct=directTTLockConnection({ownerId:owner,env:name=>Deno.env.get(name)});
+  if(body.action==='ttlock_status')return reply(direct.status());
+  try{
+   const inventory=await direct.inventory();
+   const admin=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
+   for(const lock of inventory.locks){
+    const {data:existing,error}=await admin.from('ts_locks').select('id,provider').eq('owner_id',owner).eq('provider_lock_id',lock.provider_lock_id).maybeSingle();
+    if(error)throw Error('storage');
+    if(existing&&existing.provider!=='ttlock')throw new TTLockError('A device ID is already associated with another provider. Review that inventory entry.','needs_review');
+    const result=existing?await admin.from('ts_locks').update(lock).eq('id',existing.id).eq('owner_id',owner):await admin.from('ts_locks').insert({...lock,owner_id:owner});
+    if(result.error)throw Error('storage');
+   }
+   return reply({imported:inventory.locks.length,mode:'direct',gateways:inventory.gateways});
+  }catch(e){return reply({error:e instanceof TTLockError?e.message:'Direct TTLock inventory could not be saved.',code:e instanceof TTLockError?e.code:'unavailable'},e instanceof TTLockError&&e.code==='ownership'?403:502);}
+ }
  const apiKey=Deno.env.get('SEAM_API_KEY');
  if(body.action==='status'&&!apiKey)return reply({configured:false,ready:false,mode:null});
  if(!apiKey)return reply({error:'Seam is not configured. A server API key is required.',code:'not_configured'},503);

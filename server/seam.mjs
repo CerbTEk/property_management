@@ -13,6 +13,7 @@ export function seamClient({apiKey,fetcher=fetch}){
  }
  function checkView(view,ownerId){
   if(!view||!uuid.test(view.connect_webview_id)||view.customer_key!==ownerId)throw new SeamError('Connection ownership could not be verified.','ownership');
+  if(view.selected_provider==='ttlock')throw new SeamError('TTLock uses the direct connection in Treestand.','direct_required');
   return view;
  }
  function connectionUrl(view){
@@ -31,6 +32,7 @@ export function seamClient({apiKey,fetcher=fetch}){
    const {connect_webview}=await request('connect_webviews/get',{connect_webview_id:viewId});
    const view=checkView(connect_webview,ownerId);
    if(view.connect_webview_id!==viewId)throw new SeamError('Connection mismatch.','ownership');
+   if(view.accepted_providers?.includes('ttlock'))throw new SeamError('Start a new connection for other brands. TTLock uses direct access.','direct_required');
    return {id:viewId,url:connectionUrl(view),login_successful:view.login_successful===true};
   },
   async connect(ownerId){
@@ -69,6 +71,7 @@ export function seamBookingCodeBody({property,booking,locks,assignments,properti
  if(plan.issues.length||plan.end<=now)throw new SeamError('Guest access needs review.','needs_review');
  const lock=plan.locks.find(l=>l.id===lockRecordId);
  if(!lock||lock.provider!=='seam'||!uuid.test(lock.provider_device_id))throw new SeamError('Invalid assigned provider device.','not_assigned');
+ if(lock.brand==='ttlock')throw new SeamError('TTLock uses the direct connection in Treestand.','direct_required');
  if(codeCompatibility(lock))throw new SeamError('Device cannot use the guest phone last four.','incompatible');
  return {device_id:lock.provider_device_id,code:plan.code,name:'Treestand guest access',starts_at:new Date(plan.start).toISOString(),ends_at:new Date(plan.end).toISOString(),prefer_native_scheduling:true,attempt_for_offline_device:false,use_backup_access_code_pool:false};
 }
