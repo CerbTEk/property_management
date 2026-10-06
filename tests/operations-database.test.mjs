@@ -1,0 +1,45 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+test('checkout tasks isolate hosts, require MFA, deduplicate and follow booking changes without erasing history',async()=>{
+ const db=new PGlite();
+ const a='00000000-0000-0000-0000-000000000001',other='00000000-0000-0000-0000-000000000002',p='10000000-0000-0000-0000-000000000001',p2='10000000-0000-0000-0000-000000000002',foreign='10000000-0000-0000-0000-000000000003',booking='20000000-0000-0000-0000-000000000001',foreignBooking='20000000-0000-0000-0000-000000000002';
+ try{
+ await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);insert into auth.users values('${a}'),('${other}');
+ create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
+ create function auth.jwt() returns jsonb language sql as $$select jsonb_build_object('aal',current_setting('test.aal',true))$$;
+ grant usage on schema public,auth to anon,authenticated,service_role;
+ create table ts_properties(id uuid primary key,owner_id uuid references auth.users(id),unique(id,owner_id));
+ create table ts_reservations(id uuid primary key,owner_id uuid references auth.users(id),property_id uuid,departure date,kind text default 'booking',status text default 'confirmed');
+ insert into ts_properties values('${p}','${a}'),('${p2}','${a}'),('${foreign}','${other}');
+ insert into ts_reservations(id,owner_id,property_id,departure) values('${booking}','${a}','${p}','2026-10-08'),('${foreignBooking}','${other}','${foreign}','2026-10-08');
+ alter table ts_properties enable row level security;alter table ts_reservations enable row level security;
+ create policy owned_property on ts_properties to authenticated using(auth.uid()=owner_id) with check(auth.uid()=owner_id);
+ create policy owned_booking on ts_reservations to authenticated using(auth.uid()=owner_id) with check(auth.uid()=owner_id);
+ grant select,update on ts_properties,ts_reservations to authenticated;`);
+ await db.exec(await readFile(new URL('../database/turnover_tasks.sql',import.meta.url),'utf8'));
+ await db.exec(`set role authenticated;set test.uid='${a}';set test.aal='aal2';`);
+ const prepare=async id=>(await db.query('select ts_prepare_checkout_tasks($1) as n',[id])).rows[0].n;
+ assert.equal(await prepare(booking),2);assert.equal(await prepare(booking),0);
+ await assert.rejects(()=>prepare(foreignBooking),/owned confirmed/);
+ let tasks=(await db.query('select * from ts_operations_tasks order by kind')).rows;assert.equal(tasks.length,2);
+ const clean=tasks[0].id,inspection=tasks[1].id;
+ await db.query("update ts_operations_tasks set status='done',note='Work complete' where id=$1",[clean]);
+ const completed=(await db.query('select * from ts_operations_tasks where id=$1',[clean])).rows[0];assert.ok(completed.completed_at);
+ await db.query('update ts_reservations set departure=$1,property_id=$2 where id=$3',['2026-10-10',p2,booking]);
+ tasks=(await db.query('select * from ts_operations_tasks order by kind')).rows;
+ assert.equal(tasks[0].property_id,p);assert.equal(tasks[0].due_day.toISOString().slice(0,10),'2026-10-08');assert.equal(tasks[0].note,'Work complete');assert.equal(tasks[0].completed_at.toISOString(),completed.completed_at.toISOString());
+ assert.equal(tasks[1].property_id,p2);assert.equal(tasks[1].due_day.toISOString().slice(0,10),'2026-10-10');assert.equal(await prepare(booking),0);
+ await db.query("update ts_reservations set status='cancelled' where id=$1",[booking]);
+ await assert.rejects(()=>prepare(booking),/confirmed/);assert.equal((await db.query('select count(*)::int as n from ts_operations_tasks')).rows[0].n,2);
+ await db.query("update ts_operations_tasks set status='dismissed' where id=$1",[inspection]);
+ await assert.rejects(()=>db.query('update ts_operations_tasks set owner_id=$1 where id=$2',[other,clean]),/ownership/);
+ await assert.rejects(()=>db.query('update ts_operations_tasks set booking_id=null where id=$1',[clean]),/ownership/);
+ await db.exec('set test.aal=aal1');assert.equal((await db.query('select * from ts_operations_tasks')).rows.length,0);
+ await assert.rejects(()=>db.query("insert into ts_operations_tasks(owner_id,property_id,kind,title,due_day) values($1,$2,'maintenance','Test','2026-10-08')",[a,p]),e=>e.code==='42501');
+ await db.exec(`set test.aal=aal2;set test.uid='${other}'`);assert.equal((await db.query('select * from ts_operations_tasks')).rows.length,0);
+ await assert.rejects(()=>db.query("insert into ts_operations_tasks(owner_id,property_id,booking_id,kind,title,due_day) values($1,$2,$3,'maintenance','Test','2026-10-08')",[other,foreign,booking]),/owned guest booking/);
+ await db.exec('set role anon');await assert.rejects(()=>db.query('select * from ts_operations_tasks'),e=>e.code==='42501');await assert.rejects(()=>prepare(booking),e=>e.code==='42501');
+ }finally{await db.close();}
+});
