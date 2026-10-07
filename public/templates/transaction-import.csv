@@ -1,0 +1,1 @@
+transaction_id,booking_id,guest,arrival,departure,guests,kind,amount,currency,occurred_on,method,reference,parent_transaction_id

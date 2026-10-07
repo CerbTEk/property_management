@@ -160,3 +160,7 @@ Properties now supports reviewed basic listing CSV imports and explicit linking 
 ## Booking charge migration increment
 
 Bookings now imports reviewed itemized USD charges into the first financial revision of an already imported confirmed booking. Original IDs plus guest/stay context match records; existing charge history, changed/cancelled stays and malformed amounts require review. Immutable receipts and atomic batches prevent duplicate or partial writes. Imported charge revisions feed existing reporting. Payment/refund migration, cancelled-stay settlement, payout reconciliation and actual export-file validation remain pending. See [charge imports](financial-imports.md).
+
+## Completed transaction migration increment
+
+Bookings now imports reviewed completed USD payment/refund records with original transaction IDs, original booking links, same-booking payment dependencies, cumulative refund limits, duplicate/reference protection and atomic batches. Receipt replay preserves later corrections/cancellations. Ledger records remain host-recorded export evidence. Manual-history reconciliation, cancelled stays with previously unrecorded payments, payout reconciliation, migration cutover verification and actual source-export validation remain pending. See [transaction imports](transaction-imports.md).
