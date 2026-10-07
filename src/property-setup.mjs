@@ -7,7 +7,7 @@ export function propertySetup(data,ownerId,now=Date.now()){
  return owned('properties').map(p=>{
   let timezone=false;try{if(text(p.timezone)){new Intl.DateTimeFormat('en',{timeZone:p.timezone});timezone=true;}}catch{}
   const display=owned('displays').find(d=>d.property_id===p.id);
-  const screens=owned('displayDevices').filter(d=>d.property_id===p.id&&!d.revoked&&!d.pairing_expires_at&&Date.parse(d.expires_at)>now);
+  const screens=owned('displayDevices').filter(d=>d.property_id===p.id&&!d.revoked&&!d.pairing_expires_at&&(d.expires_at==null||Date.parse(d.expires_at)>now));
   const locks=owned('locks').filter(l=>l.enabled===true);
   const assigned=owned('lockAssignments').filter(a=>a.property_id===p.id&&locks.some(l=>l.id===a.lock_id));
   const photos=owned('displayImages').filter(i=>i.property_id===p.id);

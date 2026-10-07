@@ -4,7 +4,7 @@ import {propertySetup} from '../src/property-setup.mjs';
 const owner='host',now=Date.parse('2026-10-06T20:00:00Z');
 const property={id:'p',owner_id:owner,name:'Room A',timezone:'America/New_York',check_in:'15:00:00',check_out:'11:00:00',max_guests:2,min_stay:1,weekday_cents:5600,weekend_cents:7000,markup_percent:'18.34'};
 const display={owner_id:owner,property_id:'p',title:'Welcome, {{guest}}',welcome:'Enjoy your stay.',contact:'Contact the host.',house_rules:'Quiet after 10pm.',personalize:true,music_enabled:true};
-const device={id:'d',owner_id:owner,property_id:'p',revoked:false,expires_at:'2026-12-01T00:00:00Z',pairing_expires_at:null};
+const device={id:'d',owner_id:owner,property_id:'p',revoked:false,expires_at:null,pairing_expires_at:null};
 const lock={id:'l',owner_id:owner,enabled:true};
 const data={properties:[property],displays:[display],displayDevices:[device],locks:[lock],lockAssignments:[{owner_id:owner,property_id:'p',lock_id:'l'}],displayImages:[{owner_id:owner,property_id:'p'}]};
 test('saved setup can complete without claiming online TVs or installed door codes',()=>{

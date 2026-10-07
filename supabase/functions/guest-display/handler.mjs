@@ -16,7 +16,7 @@ export function createHandler(admin,clock=()=>new Date()){
     const credential=Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b=>b.toString(16).padStart(2,'0')).join('');
     // One conditional SQL UPDATE consumes the code and rotates the unused credential.
     // Concurrent claims re-check the pairing_hash predicate after the row lock.
-    const {data,error}=await admin.from('ts_display_devices').update({pairing_hash:null,pairing_expires_at:null,token_hash:await tokenHash(credential)}).eq('pairing_hash',hash).eq('revoked',false).gt('pairing_expires_at',clock().toISOString()).gt('expires_at',clock().toISOString()).select('id');
+    const {data,error}=await admin.from('ts_display_devices').update({pairing_hash:null,pairing_expires_at:null,token_hash:await tokenHash(credential)}).eq('pairing_hash',hash).eq('revoked',false).gt('pairing_expires_at',clock().toISOString()).or(`expires_at.is.null,expires_at.gt.${clock().toISOString()}`).select('id');
     if(error)throw error;
     if(data.length!==1)return reply({error:'Invalid or expired pairing code'},401);
     return reply({token:credential});
@@ -27,7 +27,7 @@ export function createHandler(admin,clock=()=>new Date()){
   if(!/^[0-9a-f]{64}$/.test(token))return reply({error:'Screen connection unavailable'},401);
   try{
    const hash=await tokenHash(token);
-   const {data:device,error}=await admin.from('ts_display_devices').select('owner_id,property_id').eq('token_hash',hash).eq('revoked',false).gt('expires_at',clock().toISOString()).maybeSingle();
+   const {data:device,error}=await admin.from('ts_display_devices').select('owner_id,property_id').eq('token_hash',hash).eq('revoked',false).or(`expires_at.is.null,expires_at.gt.${clock().toISOString()}`).maybeSingle();
    if(error)throw error;
    if(!device)return reply({error:'Screen connection unavailable'},401);
    const [p,d]=await Promise.all([
