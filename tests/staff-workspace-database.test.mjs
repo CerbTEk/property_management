@@ -1,0 +1,43 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';import {PGlite} from '@electric-sql/pglite';
+test('staff invitations bind verified emails, restrict work to active assignments and revoke access immediately',async()=>{
+ const db=new PGlite();const host='00000000-0000-0000-0000-000000000001',staff='00000000-0000-0000-0000-000000000002',foreign='00000000-0000-0000-0000-000000000003',p='10000000-0000-0000-0000-000000000001',b='20000000-0000-0000-0000-000000000001';
+ try{
+ await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);insert into auth.users values('${host}','host@example.invalid',now()),('${staff}','worker@example.invalid',now()),('${foreign}','foreign@example.invalid',now());
+ create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
+ create function auth.jwt() returns jsonb language sql as $$select jsonb_build_object('aal',current_setting('test.aal',true),'email','worker@example.invalid')$$;
+ grant usage on schema public,auth to anon,authenticated,service_role;
+ create table ts_properties(id uuid primary key,owner_id uuid references auth.users(id),name text,timezone text,unique(id,owner_id));
+ create table ts_reservations(id uuid primary key,owner_id uuid references auth.users(id),property_id uuid,guest text,departure date,kind text default 'booking',status text default 'confirmed');
+ insert into ts_properties values('${p}','${host}','Room A','America/New_York');insert into ts_reservations(id,owner_id,property_id,guest,departure) values('${b}','${host}','${p}','PRIVATE GUEST','2026-10-10');
+ alter table ts_properties enable row level security;alter table ts_reservations enable row level security;
+ create policy owned_property on ts_properties to authenticated using(auth.uid()=owner_id) with check(auth.uid()=owner_id);create policy owned_booking on ts_reservations to authenticated using(auth.uid()=owner_id) with check(auth.uid()=owner_id);
+ grant select,update on ts_properties,ts_reservations to authenticated;`);
+ for(const file of ['turnover_tasks.sql','turnover_checklists.sql','operations_assignments.sql','staff_workspace.sql','staff_email_delivery.sql','staff_rpc_wrappers.sql'])await db.exec(await readFile(new URL('../database/'+file,import.meta.url),'utf8'));
+ await db.exec(`set role authenticated;set test.uid='${host}';set test.aal='aal2';`);
+ const person=(await db.query("insert into ts_operations_people(owner_id,name) values($1,'Cleaner A') returning id",[host])).rows[0].id;
+ await db.query('select ts_prepare_checkout_tasks($1)',[b]);let task=(await db.query("select * from ts_operations_tasks where kind='cleaning'")).rows[0];
+ await db.query('update ts_operations_tasks set assignee_id=$1 where id=$2',[person,task.id]);
+ const invite=(await db.query('select ts_invite_staff($1,$2) id',[person,' WORKER@example.invalid '])).rows[0].id;
+ await db.exec(`set test.uid='${foreign}'`);await assert.rejects(()=>db.query('select ts_accept_staff($1)',[invite]),/unavailable/);await assert.rejects(()=>db.query('select ts_revoke_staff($1)',[invite]),/unavailable/);
+ await db.exec(`set test.uid='${staff}';set test.aal='aal1'`);await assert.rejects(()=>db.query('select ts_staff_workspace()'),/Authenticator/);
+ await db.exec('set test.aal=aal2');const workspace=async()=>(await db.query('select ts_staff_workspace() d')).rows[0].d;
+ assert.equal((await workspace()).invitations.length,1);await db.query('select ts_accept_staff($1)',[invite]);
+ let view=await workspace();assert.equal(view.tasks.length,1);assert.equal(view.tasks[0].title,task.title);assert.equal(view.tasks[0].unread,true);assert.ok(!JSON.stringify(view).includes('PRIVATE GUEST'));assert.ok(!('booking_id' in view.tasks[0]));assert.ok(!('owner_id' in view.tasks[0]));
+ assert.equal((await db.query('select * from ts_operations_tasks')).rows.length,0);assert.equal((await db.query('select * from ts_reservations')).rows.length,0);await assert.rejects(()=>db.query('select * from treestand_staff.memberships'),/permission denied/);
+ task=view.tasks[0];const update=async(status,checklist=task.checklist,note='')=>db.query('select ts_staff_update_task($1,$2,$3,$4,$5)',[task.id,task.updated_at,status,JSON.stringify(checklist),note]);
+ await assert.rejects(()=>update('done'),/Complete every/);await assert.rejects(()=>update('dismissed'),/Only open/);
+ await assert.rejects(()=>update('in_progress',task.checklist.map(i=>({...i,label:'Forged'}))),/Only checklist/);
+ await db.query('select ts_staff_mark_read($1,$2)',[task.id,task.updated_at]);assert.equal((await workspace()).tasks[0].unread,false);
+ await update('in_progress',task.checklist,'Linens ready');await assert.rejects(()=>update('in_progress'),/Task changed/);
+ task=(await workspace()).tasks[0];assert.equal(task.worker_note,'Linens ready');await update('done',task.checklist.map(i=>({...i,done:true})),'Work complete');task=(await workspace()).tasks[0];assert.equal(task.status,'done');await assert.rejects(()=>update('open'),/Only open/);
+ await db.query('select ts_staff_preferences(false,true)');assert.deepEqual((await workspace()).preferences,{in_app:false,email_requested:true});assert.equal((await workspace()).email_delivery,'setup_required');
+ await db.exec(`set test.uid='${host}'`);await db.query("update ts_operations_tasks set status='open' where id=$1",[task.id]);await db.query('update ts_operations_people set active=false where id=$1',[person]);
+ await db.exec(`set test.uid='${staff}'`);assert.equal((await workspace()).tasks.length,0);await assert.rejects(()=>update('in_progress'),/unavailable/);
+ await db.exec(`set test.uid='${host}'`);await db.query('update ts_operations_people set active=true where id=$1',[person]);await db.query('select ts_revoke_staff($1)',[invite]);
+ await db.exec(`set test.uid='${staff}'`);assert.equal((await workspace()).tasks.length,0);await assert.rejects(()=>update('in_progress'),/unavailable/);
+ await db.exec(`set test.uid='${host}'`);const expired=(await db.query('select ts_invite_staff($1,$2) id',[person,'worker@example.invalid'])).rows[0].id;
+ await db.exec('reset role');await db.query("update ts_staff_invites set expires_at=now()-interval '1 second' where id=$1",[expired]);await db.exec(`set role authenticated;set test.uid='${staff}'`);await assert.rejects(()=>db.query('select ts_accept_staff($1)',[expired]),/expired/);
+ await db.exec('reset role');await db.query('update auth.users set email_confirmed_at=null where id=$1',[staff]);await db.exec('set role authenticated');await assert.rejects(()=>workspace(),/verified email/);
+ await db.exec('set role anon');await assert.rejects(()=>workspace(),/permission denied/);
+ }finally{await db.close();}
+});

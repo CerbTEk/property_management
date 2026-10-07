@@ -126,3 +126,9 @@ Message templates now support editing/archival. Per-property event rules create 
 ## October 6: assignment planning and in-app reminders
 
 Hosts can now maintain a team roster, assign active people to tasks and set property cleaning/inspection defaults for new tasks. Assignment names retain historical snapshots. Deactivated people are flagged on open work. Overview and Operations expose due/overdue/unassigned/seven-day reminders. These are host planning tools, not staff login access or delivered notifications. Invitations, restricted staff workspaces, cleaner acceptance and external reminders remain missing. See [operations assignments](operations-assignments.md).
+
+## October 6: separate staff task workspace
+
+A /staff/ workspace now supports verified-email invitation acceptance, mandatory staff MFA, assigned-task-only reads/updates, work notes, checklist completion and immediate request-level access revocation. In-app new/changed reminders have persistent reviewed receipts and notification preferences. Host records, guest data, pricing and locks remain outside staff access. Invitations are created in-app and the host shares the staff link; invitation/reminder emails and SMS remain disabled pending a dedicated verified sender and outbound transport. See [staff workspace](staff-workspace.md).
+
+Staff invitation and opt-in work-reminder email transport is now prepared with private durable jobs, owner authorization, deduplication, uncertain-outcome handling, signed provider receipts and bounce/complaint suppression. Actual sending remains disabled until a dedicated verified sender, server credentials and webhook are configured. It is host-triggered; automatic reminder scheduling and SMS remain missing. See [staff email](staff-email.md).
