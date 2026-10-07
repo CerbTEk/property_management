@@ -164,3 +164,7 @@ Bookings now imports reviewed itemized USD charges into the first financial revi
 ## Completed transaction migration increment
 
 Bookings now imports reviewed completed USD payment/refund records with original transaction IDs, original booking links, same-booking payment dependencies, cumulative refund limits, duplicate/reference protection and atomic batches. Receipt replay preserves later corrections/cancellations. Ledger records remain host-recorded export evidence. Manual-history reconciliation, cancelled stays with previously unrecorded payments, payout reconciliation, migration cutover verification and actual source-export validation remain pending. See [transaction imports](transaction-imports.md).
+
+## Migration reconciliation increment
+
+Migration now compares source-export counts and USD totals against immutable original import receipts, flags drift and missing coverage, separates the active ledger from original amounts and downloads a report without guest names or access codes. Workspace refresh failures hide stale data. Matching totals do not certify cutover: live channels, guest delivery, physical locks and TVs remain unverified. Actual source-export validation, payout reconciliation and end-to-end migration approval remain pending. See [migration review](migration-review.md).

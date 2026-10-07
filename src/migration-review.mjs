@@ -1,0 +1,41 @@
+import {centsInput,validateAmounts,latestFinancials,financialMatches} from './booking-financials.mjs';
+import {validDay} from './model.mjs';
+import {paymentBalance} from './booking-transactions.mjs';
+import {sameSnapshot,listingSnapshot} from './property-imports.mjs';
+export const reconciliationFields=[['listingLinks','Original listing links','count'],['bookings','Reservation records','count'],['charges','Itemized charge records','count'],['payments','Completed payment records','count'],['refunds','Completed refund records','count'],['guestCharges','Guest charges including tax ($)','money'],['channelFees','Host channel fees ($)','money'],['paymentAmount','Completed payment amount ($)','money'],['refundAmount','Completed refund amount ($)','money']];
+export const cutoverGates=[['channels','Live booking changes and cancellations','Not verified'],['pricing','Channel price and availability publishing','Not verified'],['messages','Guest message delivery and cancellation suppression','Not verified'],['locks','Physical door-code creation, expiry and cancellation','Not verified'],['tv','Physical guest TV, pairing and booking personalization','Not verified']];
+export function expectedTotals(values){return Object.fromEntries(reconciliationFields.map(([key,label,type])=>{const value=String(values[key]??'').trim();if(type==='money')return [key,centsInput(value)];if(!/^\d+$/.test(value)||!Number.isSafeInteger(Number(value))||Number(value)>100000)throw Error(`Enter a whole ${label.toLowerCase()} count from 0–100,000.`);return [key,Number(value)];}));}
+export function migrationReview(data,ownerId,{source='uplisting',propertyId=''}={},expected=null){
+ if(!ownerId||!['uplisting','airbnb','other'].includes(source))throw Error('Choose a valid migration source.');
+ const owned=key=>(data[key]||[]).filter(r=>r.owner_id===ownerId),properties=owned('properties'),bookings=owned('reservations'),financials=owned('bookingFinancials'),transactions=owned('bookingTransactions');
+ if(propertyId&&!properties.some(p=>p.id===propertyId))throw Error('Choose an owned listing.');
+ const scope=r=>r.source===source&&(!propertyId||r.property_id===propertyId),listingLinks=owned('propertyImports').filter(scope),bookingLinks=owned('bookingImports').filter(scope),chargeLinks=owned('financialImports').filter(scope),transactionLinks=owned('transactionImports').filter(scope);
+ const totals={listingLinks:listingLinks.length,bookings:bookingLinks.length,charges:chargeLinks.length,payments:0,refunds:0,guestCharges:0,channelFees:0,paymentAmount:0,refundAmount:0};const issues=[];
+ const flag=(kind,receipt,detail)=>issues.push({kind,originalId:receipt.external_id,propertyId:receipt.property_id,recordId:receipt.reservation_id||receipt.booking_id||receipt.property_id,detail});
+ const checkDuplicates=(rows,kind)=>{const ids=new Set();for(const r of rows){if(ids.has(r.external_id))flag(kind,r,'Repeated original ID in loaded receipts');ids.add(r.external_id);}};
+ for(const [rows,kind] of [[listingLinks,'listing'],[bookingLinks,'booking'],[chargeLinks,'charges'],[transactionLinks,'transaction']])checkDuplicates(rows,kind);
+ for(const r of listingLinks){const p=properties.find(p=>p.id===r.property_id);if(!p)flag('listing',r,'Linked listing unavailable');else if(!sameSnapshot(listingSnapshot(p,r.external_id),r.snapshot)||!/^\d{2}:\d{2}(?::00)?$/.test(p.check_in)||!/^\d{2}:\d{2}(?::00)?$/.test(p.check_out))flag('listing',r,'Listing settings changed since import; confirm intended changes');}
+ let missingCharges=0,heldMessages=0,cancelled=0,corrections=0,currentPayments=0,currentRefunds=0;
+ for(const r of bookingLinks){const b=bookings.find(b=>b.id===r.reservation_id&&b.property_id===r.property_id&&b.kind!=='block');
+  if(!b){flag('booking',r,'Linked booking unavailable or moved to another listing');continue;}
+  const snapshot={external_id:r.external_id,guest:b.guest,arrival:b.arrival,departure:b.departure,guests:b.guests,status:b.status,note:b.note,guest_phone_last4:b.guest_phone_last4??null};
+  if(!sameSnapshot(snapshot,r.snapshot))flag('booking',r,'Booking details changed since import; reconcile against the source');
+  if(!validDay(b.arrival)||!validDay(b.departure)||b.departure<=b.arrival)flag('calendar',r,'Booking dates are invalid');
+  else if(b.status==='confirmed'&&bookings.some(other=>other.id!==b.id&&other.property_id===b.property_id&&['confirmed','blocked'].includes(other.status)&&other.arrival<b.departure&&other.departure>b.arrival))flag('calendar',r,'Occupied dates overlap another booking or block');
+  if(transactions.some(t=>t.booking_id===b.id&&!transactionLinks.some(i=>i.transaction_id===t.id)))flag('ledger',r,'Booking has additional host-entered ledger records; reconcile with the source');
+  if(b.import_messages_held)heldMessages++;if(b.status==='cancelled')cancelled++;
+  const latest=latestFinancials(financials).get(b.id);if(b.status==='confirmed'&&!financialMatches(latest,b)){missingCharges++;flag('coverage',r,latest?'Current charge snapshot is stale':'Confirmed booking needs itemized charges');}
+  const balance=paymentBalance(b,financials,transactions);currentPayments+=balance.paid;currentRefunds+=balance.refunded;const count=balance.rows.filter(t=>t.kind==='reversal').length;corrections+=count;if(count)flag('ledger',r,'Ledger has corrections; original export totals differ from active-record totals');
+  if(b.status==='cancelled'&&balance.net!==0)flag('settlement',r,'Cancelled booking has a non-zero recorded net; settlement requires review');
+ }
+ for(const r of chargeLinks){try{const a=r.snapshot?.amounts,total=validateAmounts(a);totals.guestCharges+=total.total;totals.channelFees+=a.channel_fee_cents;const f=financials.find(f=>f.id===r.financial_id&&f.reservation_id===r.reservation_id&&f.property_id===r.property_id);if(!f)flag('charges',r,'Linked charge revision unavailable');else{const latest=latestFinancials(financials).get(r.reservation_id);if(latest?.id!==f.id)flag('charges',r,'A later charge revision exists; review original versus current totals');}}catch{flag('charges',r,'Imported charge snapshot is invalid');}}
+ for(const r of transactionLinks){const s=r.snapshot;if(!s||!['payment','refund'].includes(s.kind)||!Number.isSafeInteger(s.amount_cents)||s.amount_cents<1||s.amount_cents>1000000000){flag('transaction',r,'Imported transaction snapshot is invalid');continue;}if(s.kind==='payment'){totals.payments++;totals.paymentAmount+=s.amount_cents;}else{totals.refunds++;totals.refundAmount+=s.amount_cents;}
+  if(!transactions.some(t=>t.id===r.transaction_id&&t.booking_id===r.booking_id))flag('transaction',r,'Linked ledger transaction unavailable');
+  if(!bookingLinks.some(b=>b.reservation_id===r.booking_id))flag('transaction',r,'Transaction lacks a reservation receipt in this scope');
+ }
+ for(const r of chargeLinks)if(!bookingLinks.some(b=>b.reservation_id===r.reservation_id))flag('charges',r,'Charges lack a reservation receipt in this scope');
+ const comparisons=expected?reconciliationFields.map(([key,label,type])=>({key,label,type,expected:expected[key],actual:totals[key],difference:totals[key]-expected[key],matches:Number.isSafeInteger(expected[key])&&totals[key]===expected[key]})):[];
+ const matches=Boolean(expected&&comparisons.every(c=>c.matches)),hasImports=bookingLinks.length>0;
+ return {source,propertyId,totals,issues,comparisons,matches,hasImports,dataStatus:!expected?'Enter source totals':!matches?'Totals differ':!hasImports?'No reservation imports to review':issues.length?'Totals match; review issues':'Imported totals match',coverage:{missingCharges,heldMessages,cancelled,corrections},currentLedger:{payments:currentPayments,refunds:currentRefunds,net:currentPayments-currentRefunds},gates:cutoverGates,cutoverReady:false};
+}
+export function reconciliationExport(review,loadedAt){return {format:'treestand-migration-review-v1',workspaceLoadedAt:loadedAt,generatedAt:new Date().toISOString(),scope:{source:review.source,propertyId:review.propertyId},importedOriginalTotals:review.totals,comparisons:review.comparisons,issues:review.issues,coverage:review.coverage,currentRecordedLedger:review.currentLedger,dataStatus:review.dataStatus,cutoverReady:false,liveChecks:review.gates.map(([id,label,status])=>({id,label,status}))};}
