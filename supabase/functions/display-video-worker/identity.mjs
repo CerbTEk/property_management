@@ -1,8 +1,7 @@
 const issuer='https://token.actions.githubusercontent.com';
 export const audience='treestand-display-video';
 const workflows=new Set([
- 'CerbTEk/property_management/.github/workflows/display-video.yml@refs/heads/main',
- 'CerbTEk/property_management/.github/workflows/display-video.yml@refs/heads/codex/photo-video'
+ 'CerbTEk/property_management/.github/workflows/display-video.yml@refs/heads/main'
 ]);
 function bytes(text){return Uint8Array.from(atob(text.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));}
 function json(text){return JSON.parse(new TextDecoder().decode(bytes(text)));}

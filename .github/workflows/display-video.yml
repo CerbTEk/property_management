@@ -1,7 +1,7 @@
 name: Private photo slideshow videos
 on:
   push:
-    branches: [codex/photo-video]
+    branches: [main]
     paths: ['scripts/display-video-worker.mjs', 'scripts/render-display-video.py', '.github/workflows/display-video.yml']
   workflow_dispatch:
   schedule:

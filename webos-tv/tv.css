@@ -16,3 +16,7 @@ button:focus,input:focus,select:focus{outline:4px solid #f5f2e9;outline-offset:5
 .tv-video-mode>.tv-welcome-header,.tv-video-mode>.tv-welcome-body,.tv-video-mode>.tv-welcome-footer{position:relative;z-index:1}
 .tv-video-notice{position:relative;z-index:2;color:#f5f2e9;background:#123c35;padding:10px}
 
+.tv-video-player{position:relative;z-index:1;background:transparent;color:#f5f2e9}
+.tv-video-player:not(.tv-connected):before{content:"";position:fixed;inset:0;z-index:-1;background:#102b25ba;pointer-events:none}
+.tv-player.tv-video-player{background:transparent}
+

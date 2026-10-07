@@ -5,7 +5,7 @@ const now=Math.floor(Date.now()/1000);
 const claims={iss:'https://token.actions.githubusercontent.com',aud:audience,repository_id:'1406305861',repository_owner_id:'337023550',repository:'CerbTEk/property_management',workflow_ref:'CerbTEk/property_management/.github/workflows/display-video.yml@refs/heads/main',ref:'refs/heads/main',event_name:'schedule',iat:now,nbf:now-10,exp:now+300};
 test('only this repository and the approved workflow/ref can access private conversion inputs',()=>{
  assert.equal(allowedClaims(claims,now),true);
- for(const patch of [{repository_id:'other'},{aud:'other'},{repository_owner_id:'other'},{event_name:'pull_request'},{ref:'refs/heads/other'},{workflow_ref:'CerbTEk/property_management/.github/workflows/other.yml@refs/heads/main'},{exp:now-1},{nbf:now+100},{iss:'https://attacker.example'}])assert.equal(allowedClaims({...claims,...patch},now),false);
+ for(const patch of [{repository_id:'other'},{aud:'other'},{repository_owner_id:'other'},{event_name:'pull_request'},{ref:'refs/heads/other'},{workflow_ref:'CerbTEk/property_management/.github/workflows/display-video.yml@refs/heads/codex/photo-video',ref:'refs/heads/codex/photo-video'},{workflow_ref:'CerbTEk/property_management/.github/workflows/other.yml@refs/heads/main'},{exp:now-1},{nbf:now+100},{iss:'https://attacker.example'}])assert.equal(allowedClaims({...claims,...patch},now),false);
 });
 test('identity verifies the RSA signature and rejects forged claims or an unsigned JWT',async()=>{
  const keys=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);

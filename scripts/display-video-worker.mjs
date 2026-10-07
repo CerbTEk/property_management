@@ -25,7 +25,6 @@ async function boundedFile(url,limit){
  for await(const chunk of response.body){size+=chunk.length;if(size>limit)throw Error('Photo size exceeded');chunks.push(chunk);}
  return Buffer.concat(chunks);
 }
-if(process.env.GITHUB_REF==='refs/heads/codex/photo-video')await call({action:'validate-cleanup'});
 const started=Date.now();
 for(let jobIndex=0;jobIndex<3&&(jobIndex===0||Date.now()-started<5*60000);jobIndex++){
  const {job}=await call({action:'claim'});if(!job){console.log('Photo video queue checked.');break;}
