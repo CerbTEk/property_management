@@ -1,0 +1,17 @@
+{
+  "id": "com.cerbtek.treestand.tv",
+  "version": "0.1.0",
+  "vendor": "CerbTek LLC",
+  "type": "web",
+  "main": "index.html",
+  "title": "Treestand TV",
+  "appDescription": "A warm welcome, house guide and local favorites for your stay.",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "resolution": "1920x1080",
+  "bgColor": "#123C35",
+  "iconColor": "#123C35",
+  "splashBackground": "splash.png",
+  "disableBackHistoryAPI": true,
+  "requiredACG": []
+}

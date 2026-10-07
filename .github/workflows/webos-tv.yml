@@ -1,0 +1,38 @@
+name: LG webOS TV pilot
+on:
+  push:
+    branches: [main]
+    paths: ['webos-tv/**', 'scripts/build-webos.mjs', 'src/tv-*.jsx', 'src/tv-*.mjs', 'src/pairing-code.mjs', 'src/public-config.*', 'src/style.css', 'public/**', 'package*.json', '.github/workflows/webos-tv.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test tests/webos-remote.test.mjs tests/pairing-code.test.mjs tests/tv-music.test.mjs
+      - run: npm run build:webos
+      - name: Install isolated LG packaging tool
+        run: npm install --prefix "$RUNNER_TEMP/treestand-webos-cli" @webos-tools/cli@3.2.6 --ignore-scripts --no-audit --no-fund
+      - name: Validate and package
+        run: |
+          "$RUNNER_TEMP/treestand-webos-cli/node_modules/.bin/ares-package" --check webos-tv/build
+          "$RUNNER_TEMP/treestand-webos-cli/node_modules/.bin/ares-package" webos-tv/build --outdir webos-tv/releases
+          cd webos-tv/releases
+          sha256sum *.ipk > SHA256SUMS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: treestand-lg-webos-pilot
+          path: |
+            webos-tv/releases/*.ipk
+            webos-tv/releases/SHA256SUMS
+            webos-tv/INSTALL.md
+          retention-days: 30
+          if-no-files-found: error

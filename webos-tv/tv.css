@@ -1,0 +1,9 @@
+/* The installed LG app already owns the full screen. */
+html,body,#root{min-height:100%;background:#123c35}
+.tv-connected .tv-welcome{min-height:100vh;padding-bottom:7vh}
+.tv-connected>.tv-controls{position:fixed;right:2vw;bottom:1vh;z-index:3;padding:0;background:transparent}
+.tv-controls [role=group]{padding:18px;background:#123c35;border:1px solid #99ccad;border-radius:12px}
+button:focus,input:focus,select:focus{outline:4px solid #f5f2e9;outline-offset:5px}
+.tv-exit{position:fixed;inset:0;z-index:10;background:#102b25e8;display:flex;align-items:center;justify-content:center}
+.tv-exit section{padding:50px;border-radius:24px;background:#f5f2e9;color:#123c35;max-width:700px}
+.tv-exit h2{font-size:36px}.tv-exit p{font-size:23px}.tv-exit button{margin:20px 16px 0 0;font-size:22px}.tv-exit button:focus{outline-color:#123c35}

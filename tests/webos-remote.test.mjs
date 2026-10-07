@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {nextFocus} from '../webos-tv/remote.mjs';
+const box=(left,top)=>({left,top,width:80,height:40});
+test('TV remote finds aligned neighbors and does not wrap off the edge',()=>{const r=[box(0,0),box(100,0),box(200,0),box(100,100)];assert.equal(nextFocus(r,1,'ArrowLeft'),0);assert.equal(nextFocus(r,1,'ArrowRight'),2);assert.equal(nextFocus(r,1,'ArrowDown'),3);assert.equal(nextFocus(r,3,'ArrowUp'),1);assert.equal(nextFocus(r,0,'ArrowLeft'),-1);});
+test('TV remote handles absent focus, empty controls and unsupported keys',()=>{assert.equal(nextFocus([],0,'ArrowDown'),-1);assert.equal(nextFocus([box(0,0)],-1,'ArrowDown'),0);assert.equal(nextFocus([box(0,0)],0,'Enter'),-1);assert.equal(nextFocus([box(0,0)],99,'ArrowDown'),-1);});
