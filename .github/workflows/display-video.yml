@@ -1,0 +1,33 @@
+name: Private photo slideshow videos
+on:
+  push:
+    branches: [main]
+    paths: ['scripts/display-video-worker.mjs', 'scripts/render-display-video.py', '.github/workflows/display-video.yml']
+  workflow_dispatch:
+  schedule:
+    - cron: '2-57/5 * * * *'
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: treestand-photo-video-converter
+  cancel-in-progress: false
+jobs:
+  convert:
+    if: github.repository == 'CerbTEk/property_management'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Prepare video encoder
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python3 -m venv /tmp/treestand-video-env
+          /tmp/treestand-video-env/bin/pip install --disable-pip-version-check Pillow==12.3.0
+      - name: Convert queued private photos
+        run: PATH="/tmp/treestand-video-env/bin:$PATH" node scripts/display-video-worker.mjs
+

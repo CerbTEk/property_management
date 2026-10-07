@@ -5,3 +5,5 @@ dist/
 .env.*.local
 webos-tv/build/
 webos-tv/releases/
+public/tv-scenes/woodland-loop.mp4
+
