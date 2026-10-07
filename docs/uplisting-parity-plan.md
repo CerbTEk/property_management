@@ -122,3 +122,7 @@ Owned lock inventory and room/shared-entrance assignments now support booking ac
 Automatic cleaning and inspection task creation now follows new confirmed bookings, with immutable per-task snapshots of editable property checklists. Existing bookings can be prepared explicitly. Cleaner assignments, staff permissions and reminders remain missing.
 
 Message templates now support editing/archival. Per-property event rules create durable booking-linked plans with rendered variables, booking-change recalculation, cancellation suppression, pause/dismiss controls and clock-change review. Message delivery, incoming threads, unified inbox, provider receipts and automatic-send workers remain missing. No prepared backlog may be flushed automatically on provider activation. See [turnover and message preparation](turnover-and-messaging.md).
+
+## October 6: assignment planning and in-app reminders
+
+Hosts can now maintain a team roster, assign active people to tasks and set property cleaning/inspection defaults for new tasks. Assignment names retain historical snapshots. Deactivated people are flagged on open work. Overview and Operations expose due/overdue/unassigned/seven-day reminders. These are host planning tools, not staff login access or delivered notifications. Invitations, restricted staff workspaces, cleaner acceptance and external reminders remain missing. See [operations assignments](operations-assignments.md).
