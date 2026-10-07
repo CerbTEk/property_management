@@ -1,7 +1,7 @@
 import {validDay,nights} from './model.mjs';
 import {phoneLastFour} from './phone-code.mjs';
 export const importFields=[['external_id','Original booking ID',true],['guest','Guest name',true],['arrival','Arrival date',true],['departure','Departure date',true],['guests','Guest count',true],['status','Booking status',true],['phone','Guest phone number',false],['note','Note',false]];
-export function parseBookingCsv(text){
+export function parseCsv(text,{noun='booking',maxRows=200}={}){
  if(typeof text!=='string'||text.length>524288)throw Error('Use a CSV file up to 512 KB.');
  text=text.replace(/^\uFEFF/,'');const rows=[];let row=[],cell='',quoted=false,closed=false;
  const push=()=>{row.push(cell);cell='';closed=false;};const end=()=>{push();if(row.some(v=>v!==''))rows.push(row);row=[];};
@@ -11,11 +11,12 @@ export function parseBookingCsv(text){
   if(c==='"'){if(cell!=='')throw Error('Quotes must start at the beginning of a CSV field.');quoted=true;}else cell+=c;
  }
  if(quoted)throw Error('A quoted CSV field is not closed.');if(cell!==''||row.length||closed)end();
- if(rows.length<2)throw Error('Include a header and at least one booking.');if(rows.length>201)throw Error('Import up to 200 bookings at a time.');
+ if(rows.length<2)throw Error(`Include a header and at least one ${noun}.`);if(rows.length>maxRows+1)throw Error(`Import up to ${maxRows} ${noun}s at a time.`);
  const headers=rows.shift().map(h=>h.trim());if(headers.length>64)throw Error('Use a CSV with up to 64 columns.');if(headers.some(h=>!h)||new Set(headers).size!==headers.length)throw Error('Use unique, non-empty column names.');
  if(rows.some(r=>r.length!==headers.length))throw Error('Every CSV row must match the header column count.');
  return {headers,rows};
 }
+export const parseBookingCsv=text=>parseCsv(text);
 export function suggestMapping(headers){return Object.fromEntries(importFields.map(([key])=>[key,headers.find(h=>h.toLowerCase()===key)||'']));}
 const same=(a,b)=>JSON.stringify(Object.keys(a).sort().map(k=>[k,a[k]]))===JSON.stringify(Object.keys(b).sort().map(k=>[k,b[k]]));
 export function previewBookingImport(csv,mapping,property,source,bookings=[],receipts=[]){

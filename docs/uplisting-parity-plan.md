@@ -152,3 +152,7 @@ Per-listing cleaning/extra-guest fees, weekly/monthly discounts and last-minute 
 ## Reservation CSV migration increment
 
 Bookings now offers a mapped CSV import into an existing owned listing, with complete preview, stable original IDs, duplicate/change review, calendar conflicts and atomic batches. Imported message drafts remain held for separate delivery review; confirmed imports follow existing turnover/TV/access planning rules. Listing imports, financial migration, automatic provider amendments and actual export-format validation remain pending. See [reservation imports](booking-imports.md).
+
+## Listing CSV migration increment
+
+Properties now supports reviewed basic listing CSV imports and explicit linking to existing listings when all settings match. Immutable original listing IDs appear in the booking-import listing selector. Duplicate/changed records require review and batches save atomically. Financial migration, content/media/dated-price migration and actual source-export validation remain pending. See [listing imports](property-imports.md).
