@@ -38,7 +38,7 @@ export function createHandler(admin,clock=()=>new Date()){
    let guest='Guest';
    if(display.personalize){
     const now=clock(),day=localClock(now,p.data.timezone).day;
-    const bookings=await admin.from('ts_reservations').select('guest,arrival,departure,status').eq('property_id',device.property_id).eq('owner_id',device.owner_id).eq('status','confirmed').lte('arrival',day).gte('departure',day);
+    const bookings=await admin.from('ts_reservations').select('guest,arrival,departure,status').eq('property_id',device.property_id).eq('owner_id',device.owner_id).eq('status','confirmed').gte('departure',day).order('arrival',{ascending:true});
     if(bookings.error)throw Error('Booking read failed');
     guest=currentGuest(bookings.data,p.data,now);
    }
