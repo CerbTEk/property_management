@@ -9,7 +9,7 @@ This is an LG webOS test app, not the Android APK and not a browser bookmark. It
 5. In the folder containing the downloaded package, run:
 
 ```
-ares-install --device treestand-tv com.cerbtek.treestand.tv_0.1.0_all.ipk
+ares-install --device treestand-tv com.cerbtek.treestand.tv_0.2.2_all.ipk
 ares-launch --device treestand-tv com.cerbtek.treestand.tv
 ```
 
@@ -17,16 +17,19 @@ ares-launch --device treestand-tv com.cerbtek.treestand.tv
 
 Use the remote arrows and OK, or the Magic Remote pointer. Back closes house information first; Back on the main screen asks whether to exit. Reopening should restore pairing. Screen settings offers an explicit disconnect confirmation. Host revocation still invalidates the credential.
 
-Developer Mode is temporary: extend its remaining session in the Developer Mode app before expiry. LG removes test-installed apps when Developer Mode is disabled. Permanent customer installation requires LG Seller Lounge submission, acceptance and store publication. This package has not been submitted or tested on your physical LG yet.
+Developer Mode is temporary: extend its remaining session in the Developer Mode app before expiry. LG removes test-installed apps when Developer Mode is disabled. Permanent customer installation requires LG Seller Lounge submission, acceptance and store publication. This pilot has not been submitted to LG Apps. Installation and native video playback have been verified on an LG 86UQ7590PUD; use the acceptance checks below for each additional TV.
 
 ## Acceptance on the LG 86UQ7590PUD
 
-Check the home-screen icon, full-screen launch, pairing keyboard and remote focus, reconnect after closing/restarting, slideshow, uploaded images, all four house-information panels, automatic music and volume/pause, Back/exit confirmation, network loss clearing guest content, and host revocation. The TV can enforce audio/autoplay and screensaver behavior; the app does not force boot launch or disable system protections. Each content refresh uses the existing one-minute interval.
+Check the home-screen icon, full-screen launch, pairing keyboard and remote focus, reconnect after closing/restarting, continuous bundled and uploaded photo videos, all four house-information panels, automatic music and volume/pause, Back/exit confirmation, network loss clearing guest content, and host revocation. The app plays full-viewport MP4 video using LG's supported screensaver exception, with a bundled woodland fallback during connection errors. Other TV power settings remain under the TV's control; the app does not force boot launch. Each content refresh uses the existing one-minute interval.
 
 ## Build from the repository
 
 ```
 npm ci --ignore-scripts
+python -m pip install Pillow==12.3.0
+# Make sure FFmpeg is available on PATH.
+python scripts/render-starter-video.py
 npm run build:webos
 npm install --prefix /tmp/treestand-webos-cli @webos-tools/cli@3.2.6 --ignore-scripts
 /tmp/treestand-webos-cli/node_modules/.bin/ares-package webos-tv/build --outdir webos-tv/releases
@@ -38,3 +41,5 @@ LG references:
 - https://webostv.developer.lge.com/develop/getting-started/developer-mode-app
 - https://webostv.developer.lge.com/develop/references/appinfo-json
 - https://webostv.developer.lge.com/develop/guides/back-button
+
+Uploaded photos are converted privately into video automatically. Conversion can take a few minutes; finished videos appear on the next one-minute refresh. See [photo video setup](../docs/display-video.md).
