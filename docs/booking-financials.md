@@ -6,7 +6,7 @@ The host enters taxes actually charged. There is no automatic tax determination,
 
 Each save appends an immutable revision in `ts_booking_financials`. Earlier revisions remain visible, including for cancelled bookings. Saving does not change previous records. Server validation binds the owner and booking context (listing, arrival, departure and guest count), locks the booking, checks the expected revision, stamps the timestamp and validates integer-cent limits and totals. Discount is limited to accommodation; host channel fees cannot exceed the guest total. New revisions require an active confirmed booking. Blocks are excluded. RLS restricts reads/inserts to the owner and host MFA (existing pilot exception retained). UPDATE/DELETE are not granted; an immutable trigger also rejects them. Public functions are security invoker with fixed search paths and explicit grants; no new privileged public RPC exists.
 
-Booking changes flag the latest revision for review until charges are confirmed again. Rate changes do not modify snapshots. This is charge revision history, not payment history. A guest-name-only change does not invalidate the amounts.
+Booking changes flag the latest revision for review until charges are confirmed again. Rate changes do not modify snapshots. This is charge revision history; completed manual payment/refund history is available separately under Payments / refunds. A guest-name-only change does not invalidate the amounts.
 
 ## Report interpretation
 
@@ -19,3 +19,5 @@ Charge CSV exports contain integer-cent columns, USD currency, date range and co
 Financial history workspace reads paginate with completeness checks. All history is retained; a server aggregation route is a future scale improvement.
 
 Validation covers isolation/MFA, anonymous denial, immutable history, stale revisions and booking context, cancellation, bounds/fractional cents, current-rate independence, exact-cent allocation, missing/stale coverage, ADR and export privacy. Production smoke tests use transaction-rolled-back synthetic records only.
+
+Host-recorded payment and refund balances now use these charge snapshots. See [booking transactions](booking-transactions.md); processor verification and cancellation settlement remain separate.

@@ -140,3 +140,7 @@ The Reports blade now includes listing and monthly booked occupancy, nights, blo
 ## October 6: immutable booking charge records
 
 Hosts can save itemized USD accommodation, discount, fees, taxes and channel-fee revisions for confirmed bookings. Changes to booking dates/listing/guest count require review; current rates never rewrite financial history. Reports now include allocated booked charges, taxes, channel fees and fully covered accommodation ADR, with financial CSV exports and explicit missing/stale coverage. Payment collection, refunds, cancellation-fee reconciliation, automatic tax calculation/remittance and payouts remain pending. See [booking financials](booking-financials.md).
+
+## October 6: host-recorded payment/refund ledger
+
+Bookings now records completed payments, linked partial refunds and immutable corrections with duplicate/retry controls. Current agreed charge snapshots provide remaining-balance and overpayment views. Cancelled or stale bookings require settlement review. Reports and CSVs separate dated host-recorded payment/refund totals from allocated booking charges. No money moves and no record claims processor verification. Stripe/channel reconciliation, actual refund actions, cancellation settlement and tax remittance remain pending. See [booking transactions](booking-transactions.md).

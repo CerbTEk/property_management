@@ -1,0 +1,17 @@
+# Payment and refund records
+
+Bookings → Payments / refunds records completed USD payments and completed refunds against statement/receipt references. It also displays recorded gross payments, recorded refunds, net recorded money, remaining agreed-charge balance and overpayment credit. Deposits and installments can be entered as separate completed payments. Future/scheduled payments are rejected.
+
+These records are host-recorded evidence, not processor-confirmed transactions. No request charges a card, refunds money, changes Stripe settings or transfers host funds. Enter gross guest payments, not the host payout after channel fees. Dedicated guest-payment events and processor reconciliation remain an integration step.
+
+Refund records link to an active payment from the same owned booking. Active refunds cannot exceed that payment. Mistakes are corrected with a full reversal entry; original history is retained. A payment with active refund records cannot be reversed until those refund records are corrected first. A reversal is a record correction, not a financial refund or cancellation. Reversal records themselves cannot be reversed; record the correct transaction again with its own reference.
+
+Cancelled bookings retain transactions and permit refunds/corrections but not new payments. Their remaining agreed charges are not inferred from the old full-stay price; cancellation terms, fees and settlement need explicit review. A missing or stale charge snapshot similarly suppresses the computed balance. Overpayments remain visible for review, not an automatic refund instruction.
+
+All ledger rows are immutable, owner/MFA restricted and labeled `host_recorded`; the existing pilot exception remains. Authenticated clients receive SELECT/INSERT only. SECURITY INVOKER RPCs and row triggers validate ownership, booking state, linked records and limits. Booking-row locks serialize each ledger. Sequence comparison rejects stale submissions. Per-owner request UUIDs replay identical requests safely and reject changed payloads. Reference uniqueness within owner/booking/type provides another duplicate guard. It does not prove two different references are not the same real-world payment; statement reconciliation remains the host's responsibility.
+
+Transaction dates use UTC, validated server-side. Reports now show separately dated payments, refunds and net recorded amounts including cancelled bookings. These are distinct from occupied-night charge allocation. Corrections remove the erroneous original amounts from their original report dates, even if the correction is entered later; history remains visible and correction-date counts are separately shown. Filtering by listing attributes records to the booking's current listing; original-listing attribution is not yet modeled for amended bookings.
+
+Monthly and listing payment CSVs contain totals and record counts only, with formula-neutralized listing names. They omit guests, receipt references, notes, phone numbers and access codes. They are not settlement statements. Tax remittance, provider reconciliation, disputes and actual payouts are not implemented by this ledger.
+
+Database validation covers idempotency, stale sequence, duplicate references, future dates, refund caps, reversals, cancellation and anonymous/foreign-owner/MFA denial. Model tests cover partial payments, refunds, credits, stale balances, corrections, separate transaction-date reporting and CSV privacy. Live smoke tests use rolled-back synthetic records.
