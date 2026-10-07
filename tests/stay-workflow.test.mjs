@@ -5,7 +5,7 @@ import {currentGuest} from '../supabase/functions/guest-display/schedule.mjs';
 const owner='host';
 const p={id:'p',owner_id:owner,name:'Room A',timezone:'America/New_York',check_in:'15:00:00',check_out:'11:00:00'};
 const b={id:'b',owner_id:owner,property_id:'p',guest:'Casey Test',guest_phone_last4:'0042',arrival:'2026-10-06',departure:'2026-10-08',status:'confirmed',kind:'booking'};
-const data={properties:[p],reservations:[b],locks:[{id:'l',owner_id:owner,name:'Door',enabled:true,provider:'ttlock',brand:'ttlock'}],lockAssignments:[{owner_id:owner,property_id:'p',lock_id:'l',purpose:'room'}],displays:[{owner_id:owner,property_id:'p',personalize:true,house_rules:'Quiet after 10pm.'}],displayDevices:[{id:'d',owner_id:owner,property_id:'p',revoked:false,expires_at:'2026-12-01T00:00:00Z',pairing_expires_at:null}]};
+const data={properties:[p],reservations:[b],locks:[{id:'l',owner_id:owner,name:'Door',enabled:true,provider:'ttlock',brand:'ttlock'}],lockAssignments:[{owner_id:owner,property_id:'p',lock_id:'l',purpose:'room'}],displays:[{owner_id:owner,property_id:'p',personalize:true,house_rules:'Quiet after 10pm.'}],displayDevices:[{id:'d',owner_id:owner,property_id:'p',revoked:false,expires_at:null,pairing_expires_at:null}]};
 const view=(input,time)=>stayWorkflow(input,owner,Date.parse(time));
 test('local arrival/checkout boundaries match the real TV personalization schedule',()=>{
  for(const [time,stage,name] of [['2026-10-06T18:59:59Z','upcoming','Casey'],['2026-10-06T19:00:00Z','in_stay','Casey'],['2026-10-08T14:59:59Z','in_stay','Casey'],['2026-10-08T15:00:00Z','finished','Guest']]){

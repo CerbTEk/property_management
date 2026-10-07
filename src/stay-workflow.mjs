@@ -25,7 +25,7 @@ export function stayWorkflow(data,ownerId,now=Date.now()){
    row.access={state:plan.issues.length?'needs_review':'draft_ready',lockCount:plan.locks.length,issues:plan.issues};
   }catch(e){row.access.issues.push(e.message);}
   const display=owned('displays').find(d=>d.property_id===b.property_id);
-  const screens=owned('displayDevices').filter(d=>d.property_id===b.property_id&&!d.revoked&&!d.pairing_expires_at&&Date.parse(d.expires_at)>now);
+  const screens=owned('displayDevices').filter(d=>d.property_id===b.property_id&&!d.revoked&&!d.pairing_expires_at&&(d.expires_at==null||Date.parse(d.expires_at)>now));
   row.tv={state:display&&screens.length&&display.personalize?'scheduled':'needs_setup',screenCount:screens.length,personalized:display?.personalize===true,rules:Boolean(display?.house_rules?.trim())};
   return row;
  });

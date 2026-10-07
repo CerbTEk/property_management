@@ -2,7 +2,7 @@
 
 Hosts save welcome text, a house guide, recommendations and contact details in Guest Experience. Create a screen link for a named device and open it in a modern TV browser or a computer attached to the TV. Select Full screen when supported. Native Fire TV, Roku and other TV app packaging is not implemented.
 
-Each screen gets a randomly generated 256-bit credential. The host sees the link once. Its fragment is removed from the URL after the player stores it locally. The database stores only its SHA-256 hash. Links expire after 90 days; owners can permanently revoke them and create replacements. A link is a bearer credential: anyone holding it can read this room's saved guest-facing content. Avoid putting door codes or other host-only secrets in that content.
+Each screen gets a randomly generated 256-bit credential. The host sees the link once. Its fragment is removed from the URL after the player stores it locally. The database stores only its SHA-256 hash. Screen connections stay active until the owner revokes them. Only unused, one-time pairing codes expire after 30 minutes. A link is a bearer credential: anyone holding it can read this room's saved guest-facing content. Avoid putting door codes or other host-only secrets in that content.
 
 The player refreshes every minute. On connection failure, expiry or revocation it clears the displayed content. Disconnect removes the credential from that browser; revoke in the host workspace to invalidate any copies. Device status means a link is active, not proof the TV is online.
 
