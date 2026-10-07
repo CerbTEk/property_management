@@ -14,7 +14,7 @@ export async function workspace(){
  const keys=['properties','reservations','rates','templates','displays','locks','lockAssignments','lockConnections','comparables','displayDevices','tasks','displayImages','turnoverTemplates','messageRules','messageQueue','operationsPeople','operationsDefaults','staffInvites','bookingFinancials','bookingTransactions','pricingRules','bookingImports','propertyImports','financialImports','transactionImports'];
  const results=await Promise.all(tables.map(t=>{
   const columns=t==='display_devices'?'id,owner_id,property_id,name,revoked,expires_at,pairing_expires_at':t==='display_images'?'id,owner_id,property_id':'*',order=t==='reservations'?'arrival':t==='display_devices'?'expires_at':'created_at';
-  if(['properties','reservations','operations_tasks','booking_financials','booking_transactions','pricing_rules','booking_imports','property_imports','financial_imports','transaction_imports'].includes(t))return loadWorkspacePages((start,end,first)=>db.from('ts_'+t).select(columns,first?{count:'exact'}:{}).order(order).order('id').range(start,end));
+  if(['properties','guest_displays','reservations','operations_tasks','booking_financials','booking_transactions','pricing_rules','booking_imports','property_imports','financial_imports','transaction_imports'].includes(t))return loadWorkspacePages((start,end,first)=>db.from('ts_'+t).select(columns,first?{count:'exact'}:{}).order(order).order('id').range(start,end));
   return db.from('ts_'+t).select(columns).order(order);
  }));
  for(const r of results)if(r.error)throw Error(r.error.message);

@@ -4,13 +4,14 @@ import {DisplayDevices} from './display-devices';
 import {DisplayImages} from './display-images';
 import {musicChoices} from './tv-music.mjs';
 import {TvWelcome} from './tv-welcome';
-const defaults={title:'Welcome, {{guest}}',welcome:'Make yourself at home. We hope you enjoy your stay.',guidebook:'',recommendations:'',contact:'',house_rules:'',slideshow_seconds:20,music_enabled:true,music_default:'woodland',music_volume:15,personalize:false};
+import {displayDefaults as defaults} from './guest-content.mjs';
+import {BulkGuestContent} from './bulk-guest-content.jsx';
 export function GuestExperience({properties,reservations,displays,user,onSaved,initialPropertyId}){
  const [propertyId,setPropertyId]=useState(initialPropertyId||properties[0]?.id||''),[photos,setPhotos]=useState({propertyId:'',images:[]});
  const property=properties.find(p=>p.id===propertyId);
  if(!property)return <section className="panel"><h2>Guest Experience</h2><p>Add a listing in Overview to create its welcome display and guidebook.</p></section>;
  const saved=displays.find(d=>d.property_id===propertyId);
- return <><section className="panel"><h2>Guest Experience</h2><p>Create your own welcome display and house guide alongside your bookings.</p><label>Listing<select value={propertyId} onChange={e=>setPropertyId(e.target.value)}>{properties.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><p className="notice">Photo slideshows, house rules and the welcome screen are available below. Saved content syncs to connected TVs within one minute.</p></section><DisplayEditor key={propertyId} property={property} images={photos.propertyId===propertyId?photos.images:[]} saved={saved} bookings={reservations.filter(r=>r.property_id===propertyId&&r.status==='confirmed')} user={user} onSaved={onSaved}/><DisplayImages key={propertyId+'photos'} property={property} user={user} onLoaded={images=>setPhotos({propertyId,images})}/><DisplayDevices key={propertyId+'screens'} property={property} user={user}/></>;
+ return <><section className="panel"><h2>Guest Experience</h2><p>Create your own welcome display and house guide alongside your bookings.</p><label>Listing<select value={propertyId} onChange={e=>setPropertyId(e.target.value)}>{properties.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><p className="notice">Photo slideshows, house rules and the welcome screen are available below. Saved content syncs to connected TVs within one minute.</p></section><BulkGuestContent key={propertyId+JSON.stringify(displays)} properties={properties} displays={displays} user={user} sourceId={propertyId} onSaved={onSaved}/><DisplayEditor key={propertyId+JSON.stringify(saved)} property={property} images={photos.propertyId===propertyId?photos.images:[]} saved={saved} bookings={reservations.filter(r=>r.property_id===propertyId&&r.status==='confirmed')} user={user} onSaved={onSaved}/><DisplayImages key={propertyId+'photos'} property={property} user={user} onLoaded={images=>setPhotos({propertyId,images})}/><DisplayDevices key={propertyId+'screens'} property={property} user={user}/></>;
 }
 function DisplayEditor({property,saved,images,bookings,user,onSaved}){
  const [draft,setDraft]=useState({...defaults,...saved}),[bookingId,setBookingId]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[preview,setPreview]=useState(false);
@@ -19,7 +20,7 @@ function DisplayEditor({property,saved,images,bookings,user,onSaved}){
  async function save(e){e.preventDefault();setBusy(true);setNotice('');try{
   const values=Object.fromEntries(Object.keys(defaults).map(k=>[k,draft[k]]));
   const {error}=await db.from('ts_guest_displays').upsert({...values,owner_id:user.id,property_id:property.id},{onConflict:'property_id'});
-  if(error)throw error;await onSaved();setNotice('Display settings saved.');
+  if(error)throw error;await onSaved(undefined,property.id);setNotice('Display settings saved.');
  }catch(e){setNotice(e.message);}finally{setBusy(false);}}
  return <div className="guest-editor"><section className="panel"><h2>Display settings</h2><form onSubmit={save}>
  <label>Welcome title<input name="title" required maxLength="120" value={draft.title} onChange={change}/></label><p>Use {'{{guest}}'} to insert the selected reservation’s first name.</p>

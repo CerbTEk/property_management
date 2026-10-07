@@ -168,3 +168,7 @@ Bookings now imports reviewed completed USD payment/refund records with original
 ## Migration reconciliation increment
 
 Migration now compares source-export counts and USD totals against immutable original import receipts, flags drift and missing coverage, separates the active ledger from original amounts and downloads a report without guest names or access codes. Workspace refresh failures hide stale data. Matching totals do not certify cutover: live channels, guest delivery, physical locks and TVs remain unverified. Actual source-export validation, payout reconciliation and end-to-end migration approval remain pending. See [migration review](migration-review.md).
+
+## Bulk guest content increment
+
+Guest Experience now copies selected saved house rules, guide, recommendations/contact, welcome and TV settings to up to 100 owned destinations per reviewed atomic batch. Replace or fill-empty-text modes preserve unselected/local content, require explicit clearing permission and reject stale previews. Guest display reads paginate for larger portfolios. Ongoing linked templates and bulk photos remain pending. See [bulk guest content](bulk-guest-content.md).

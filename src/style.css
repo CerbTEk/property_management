@@ -42,3 +42,6 @@
 .report-stats small{display:block;margin-top:.5rem;color:var(--muted);font-size:.85rem;line-height:1.5}.report-stats strong{font-size:2rem}
 .booking-amounts{width:330px;max-width:100%;white-space:normal}.financial-confirm{display:flex;align-items:flex-start;line-height:1.5}.financial-confirm input{width:auto;margin-top:4px}.booking-amounts details article{border-bottom:1px solid var(--border);padding:12px 0}
 .quote-breakdown{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 16px;line-height:1.5}.quote-breakdown dt{color:var(--muted)}.quote-breakdown dd{margin:0;text-align:right;font-weight:600}
+
+/* Portfolio content: explicit field and destination selection. */
+.bulk-content fieldset{border:1px solid var(--border);border-radius:10px;padding:20px;margin:20px 0}.bulk-content legend{font-weight:700;padding:0 8px}.bulk-field-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}.bulk-listings{max-height:320px;overflow:auto;margin-top:18px}.bulk-review{margin-top:24px;border-top:1px solid var(--border);padding-top:20px}.bulk-before-after{display:grid;grid-template-columns:1fr 1fr;gap:24px}.bulk-text{white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto}.bulk-review>button{margin:20px 20px 0 0}@media(max-width:800px){.bulk-before-after{grid-template-columns:1fr}}

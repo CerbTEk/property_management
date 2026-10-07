@@ -1,0 +1,13 @@
+# Bulk guest content
+
+Guest Experience → Apply content to multiple listings uses the selected listing's **saved** display as the source. Save source edits first. Select the fields, destinations and update mode, preview the source plus every before/after change, then apply. Search listing names and select up to 100 destinations per atomic batch. The source is excluded. The tool appears when there is another owned listing.
+
+House rules, house guide, recommendations, contact, welcome title/message, photo rotation, automatic music, music choice/volume and guest-name personalization can be selected individually. Replace selected fields copies exactly those fields. Fill empty text fields only retains non-empty local text; whitespace-only destinations count as non-empty. Blank source text requires explicit clearing permission. Photos, media uploads, room details, bookings, devices and pairing credentials remain specific to each property.
+
+The function creates missing display records using the database's normal defaults, then applies selected fields. New records' unselected welcome message is empty; other settings use existing defaults. This is a one-time copy, not a permanent template link. Later source edits require another bulk update. Connected TVs receive new settings on their existing one-minute refresh.
+
+The transaction locks owned source/destination listings in stable order, checks the full saved source/target content against the reviewed preview and applies all targets atomically. A missing/foreign/stale record or invalid input rejects the whole batch. A concurrent first display creation fails the unique constraint instead of overwriting that record. It runs as the authenticated caller under ownership RLS and existing MFA requirements, preserving the authorized pilot exception. Replaying a stale preview fails; refreshing and previewing already-matching records returns unchanged counts.
+
+Workspace display reads now paginate, so a portfolio beyond the API's first page is not silently incomplete. Display editors remount after refreshed saved content changes. Other open sessions should refresh before making single-listing edits; this bulk feature does not replace the existing single-editor save API with revision protection. No automatic undo is provided; inspect the preview before applying.
+
+Validation: model tests check field selection, ownership, limits, blanks and empty-only copying. PostgreSQL tests check creation, unchanged replays after re-preview, preservation of local values, clearing opt-in, rollback on stale targets, source drift and owner/MFA/anonymous restrictions. A production transaction smoke test uses synthetic properties and rolls all changes back.
