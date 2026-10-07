@@ -8,7 +8,7 @@ const b={id:'b',owner_id:owner,property_id:'p',guest:'Casey Test',guest_phone_la
 const data={properties:[p],reservations:[b],locks:[{id:'l',owner_id:owner,name:'Door',enabled:true,provider:'ttlock',brand:'ttlock'}],lockAssignments:[{owner_id:owner,property_id:'p',lock_id:'l',purpose:'room'}],displays:[{owner_id:owner,property_id:'p',personalize:true,house_rules:'Quiet after 10pm.'}],displayDevices:[{id:'d',owner_id:owner,property_id:'p',revoked:false,expires_at:'2026-12-01T00:00:00Z',pairing_expires_at:null}]};
 const view=(input,time)=>stayWorkflow(input,owner,Date.parse(time));
 test('local arrival/checkout boundaries match the real TV personalization schedule',()=>{
- for(const [time,stage,name] of [['2026-10-06T18:59:59Z','upcoming','Guest'],['2026-10-06T19:00:00Z','in_stay','Casey'],['2026-10-08T14:59:59Z','in_stay','Casey'],['2026-10-08T15:00:00Z','finished','Guest']]){
+ for(const [time,stage,name] of [['2026-10-06T18:59:59Z','upcoming','Casey'],['2026-10-06T19:00:00Z','in_stay','Casey'],['2026-10-08T14:59:59Z','in_stay','Casey'],['2026-10-08T15:00:00Z','finished','Guest']]){
   const result=view(data,time);assert.equal(result.rows[0].stage,stage);assert.equal(currentGuest([b],p,new Date(time)),name);
  }
  assert.equal(view(data,'2026-10-07T01:00:00Z').counts.arrivals,1); // Still October 6 locally.
@@ -18,7 +18,7 @@ test('local arrival/checkout boundaries match the real TV personalization schedu
 test('updates and cancellations change TV schedule and never imply door cleanup succeeded',()=>{
  const moved={...b,arrival:'2026-10-09',departure:'2026-10-10'};
  assert.equal(view({...data,reservations:[moved]},'2026-10-07T20:00:00Z').rows[0].stage,'upcoming');
- assert.equal(currentGuest([moved],p,new Date('2026-10-07T20:00:00Z')),'Guest');
+ assert.equal(currentGuest([moved],p,new Date('2026-10-07T20:00:00Z')),'Casey');
  const cancelled={...b,status:'cancelled'};
  const r=view({...data,reservations:[cancelled]},'2026-10-06T20:00:00Z');
  assert.equal(r.rows[0].stage,'cancelled');assert.equal(r.rows[0].access.state,'cleanup_unverified');assert.equal(r.rows[0].tv.state,'generic');assert.equal(r.counts.arrivals,0);assert.equal(r.counts.inStay,0);

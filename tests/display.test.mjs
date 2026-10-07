@@ -25,10 +25,15 @@ test('valid device returns only its room welcome content with no-store and owner
 
 test('personalized endpoint returns only first name and scopes booking reads to device owner and room',async()=>{
  const log=[];
- const admin={from(table){const chain={select(fields){log.push([table,'select',fields]);return this;},eq(k,v){log.push([table,k,v]);return this;},gt(){return this;},lte(){return this;},gte(){return this;},order(){return this;},limit:async()=>({data:[],error:null}),async maybeSingle(){return {data:table==='ts_display_devices'?{owner_id:'owner-a',property_id:'room-a'}:{title:'Welcome, {{guest}}',personalize:true,welcome:'Hello',guidebook:'',recommendations:'',contact:''}};},async single(){return {data:{name:'Room A',check_in:'15:00:00',check_out:'11:00:00',timezone:'America/New_York'}};},then(resolve){return Promise.resolve({data:[{guest:'Alex Synthetic',arrival:'2026-10-05',departure:'2026-10-07',status:'confirmed'}]}).then(resolve);}};return chain;}};
+ const admin={from(table){const chain={select(fields){log.push([table,'select',fields]);return this;},eq(k,v){log.push([table,k,v]);return this;},gt(){return this;},lte(){throw Error('Future arrivals must not be excluded');},gte(k,v){log.push([table,k,v]);return this;},order(){return this;},limit:async()=>({data:[],error:null}),async maybeSingle(){return {data:table==='ts_display_devices'?{owner_id:'owner-a',property_id:'room-a'}:{title:'Welcome, {{guest}}',personalize:true,welcome:'Hello',guidebook:'',recommendations:'',contact:''}};},async single(){return {data:{name:'Room A',check_in:'15:00:00',check_out:'11:00:00',timezone:'America/New_York'}};},then(resolve){return Promise.resolve({data:[{guest:'Alex Synthetic',arrival:'2026-10-05',departure:'2026-10-07',status:'confirmed'},{guest:'Jordan Upcoming',arrival:'2026-10-10',departure:'2026-10-12',status:'confirmed'}]}).then(resolve);}};return chain;}};
  const response=await createHandler(admin,()=>new Date('2026-10-05T20:00:00Z'))(new Request('https://display',{headers:{Authorization:'Bearer '+'a'.repeat(64)}}));
  assert.equal(response.status,200);const body=await response.json();assert.equal(body.display.title,'Welcome, Alex');assert.ok(!JSON.stringify(body).includes('Synthetic'));assert.ok(!JSON.stringify(body).includes('owner-a'));
  for(const [key,value] of [['owner_id','owner-a'],['property_id','room-a'],['status','confirmed']])assert.ok(log.some(x=>x[0]==='ts_reservations'&&x[1]===key&&x[2]===value));
+ const turnover=await createHandler(admin,()=>new Date('2026-10-07T15:00:00Z'))(new Request('https://display',{headers:{Authorization:'Bearer '+'a'.repeat(64)}}));
+ assert.equal(turnover.status,200);
+ const nextBody=await turnover.json();assert.equal(nextBody.display.title,'Welcome, Jordan');
+ assert.ok(!JSON.stringify(nextBody).includes('Upcoming'));
+ assert.ok(log.some(x=>x[0]==='ts_reservations'&&x[1]==='departure'&&x[2]==='2026-10-07'));
 });
 
 test('pairing code claim is atomic, single-use, expiring and never returns owner metadata',async()=>{
