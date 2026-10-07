@@ -1,0 +1,46 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+test('message plans deduplicate, follow edits, suppress cancellations, reject unsafe variables and protect tenant records',async()=>{
+ const db=new PGlite();const a='00000000-0000-0000-0000-000000000001',other='00000000-0000-0000-0000-000000000002',p='10000000-0000-0000-0000-000000000001',foreign='10000000-0000-0000-0000-000000000002',booking='20000000-0000-0000-0000-000000000001';
+ try{
+ await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);insert into auth.users values('${a}'),('${other}');
+ create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
+ create function auth.jwt() returns jsonb language sql as $$select jsonb_build_object('aal',current_setting('test.aal',true))$$;
+ grant usage on schema public,auth to anon,authenticated,service_role;
+ create table ts_properties(id uuid primary key,owner_id uuid,name text,timezone text,check_in time,check_out time,unique(id,owner_id));
+ create table ts_reservations(id uuid primary key,owner_id uuid,property_id uuid,guest text,arrival date,departure date,kind text default 'booking',status text default 'confirmed',created_at timestamptz default now(),unique(id,owner_id));
+ create table ts_message_templates(id uuid primary key default gen_random_uuid(),owner_id uuid,name text,body text);
+ insert into ts_properties values('${p}','${a}','Room A','America/New_York','15:00','11:00'),('${foreign}','${other}','Foreign room','America/New_York','15:00','11:00');
+ insert into ts_reservations(id,owner_id,property_id,guest,arrival,departure) values('${booking}','${a}','${p}','Gill','2026-10-08','2026-10-10');
+ alter table ts_properties enable row level security;alter table ts_reservations enable row level security;
+ create policy owned_property on ts_properties to authenticated using(auth.uid()=owner_id) with check(auth.uid()=owner_id);
+ create policy owned_booking on ts_reservations to authenticated using(auth.uid()=owner_id) with check(auth.uid()=owner_id);
+ grant select,insert,update on ts_properties,ts_reservations,ts_message_templates to authenticated;`);
+ await db.exec(await readFile(new URL('../database/message_schedules.sql',import.meta.url),'utf8'));
+ await db.exec(`set role authenticated;set test.uid='${a}';set test.aal='aal2';`);
+ const rule=(await db.query("insert into ts_message_rules(owner_id,property_id,name,body,event,offset_minutes) values($1,$2,'Arrival','Hello {{guest}} at {{property}}, arrive {{arrival}} at {{check_in}}','check_in',-1440) returning id",[a,p])).rows[0].id;
+ let q=(await db.query('select * from ts_message_queue')).rows[0];assert.equal(q.state,'planned');assert.equal(q.due_at.toISOString(),'2026-10-07T19:00:00.000Z');assert.equal(q.body,'Hello Gill at Room A, arrive 2026-10-08 at 15:00');
+ await db.query("update ts_reservations set arrival='2026-10-09',guest='New guest' where id=$1",[booking]);
+ q=(await db.query('select * from ts_message_queue')).rows[0];assert.equal(q.due_at.toISOString(),'2026-10-08T19:00:00.000Z');assert.match(q.body,/New guest/);assert.equal((await db.query('select count(*)::int n from ts_message_queue')).rows[0].n,1);
+ await db.query("update ts_reservations set status='cancelled' where id=$1",[booking]);assert.equal((await db.query('select state from ts_message_queue')).rows[0].state,'suppressed');
+ await db.query("update ts_reservations set status='confirmed' where id=$1",[booking]);
+ await assert.rejects(()=>db.query("update ts_message_queue set body='Forged' where id=$1",[q.id]),/only dismiss/);
+ await assert.rejects(()=>db.query("update ts_message_queue set state='sent' where id=$1",[q.id]),/only dismiss/);
+ await db.query("update ts_message_queue set state='dismissed' where id=$1",[q.id]);
+ await db.query("update ts_message_rules set body='Updated {{guest}}' where id=$1",[rule]);assert.equal((await db.query('select state from ts_message_queue')).rows[0].state,'dismissed');
+ await assert.rejects(()=>db.query("update ts_message_rules set body='Code {{door_code}}' where id=$1",[rule]),/supported message variables/);
+ await db.query("insert into ts_message_rules(owner_id,property_id,name,body,event) values($1,$2,'Departure','Bye {{guest}}','check_out')",[a,p]);
+ await db.query('update ts_message_rules set enabled=false where name=$1',['Departure']);assert.equal((await db.query("select state from ts_message_queue where id<>$1",[q.id])).rows[0].state,'suppressed');
+ const dst=(await db.query("insert into ts_message_rules(owner_id,property_id,name,body,event) values($1,$2,'DST','Hello','check_in') returning id",[a,p])).rows[0].id;
+ await db.query("update ts_properties set check_in='01:30' where id=$1",[p]);
+ await db.query("update ts_reservations set arrival='2026-11-01',departure='2026-11-02' where id=$1",[booking]);
+ const ambiguous=(await db.query('select * from ts_message_queue where rule_id=$1',[dst])).rows[0];assert.equal(ambiguous.state,'needs_review');assert.equal(ambiguous.due_at,null);
+ await db.exec('set test.aal=aal1');assert.equal((await db.query('select * from ts_message_queue')).rows.length,0);
+ await db.exec(`set test.aal=aal2;set test.uid='${other}'`);assert.equal((await db.query('select * from ts_message_queue')).rows.length,0);assert.equal((await db.query('select * from ts_message_rules')).rows.length,0);
+ await assert.rejects(()=>db.query("insert into ts_message_rules(owner_id,property_id,name,body,event) values($1,$2,'Foreign','Hello','confirmation')",[a,p]),e=>e.code==='42501');
+ await assert.rejects(()=>db.query('select ts_reconcile_message_queue()'),/permission denied/);
+ await db.exec('set role anon');await assert.rejects(()=>db.query('select * from ts_message_queue'),e=>e.code==='42501');
+ }finally{await db.close();}
+});

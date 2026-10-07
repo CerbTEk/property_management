@@ -9,8 +9,8 @@ try{if(key?.split('.').length===3)privileged=JSON.parse(atob(key.split('.')[1].r
 export const configured=Boolean(url&&key&&!privileged&&!key.startsWith('sb_secret_'));
 export const db=configured?createClient(url,key,{auth:{detectSessionInUrl:!nativeLockCallback}}):null;
 export async function workspace(){
- const tables=['properties','reservations','rates','message_templates','guest_displays','locks','lock_assignments','lock_connections','market_comparables','display_devices','operations_tasks','display_images'];
- const keys=['properties','reservations','rates','templates','displays','locks','lockAssignments','lockConnections','comparables','displayDevices','tasks','displayImages'];
+ const tables=['properties','reservations','rates','message_templates','guest_displays','locks','lock_assignments','lock_connections','market_comparables','display_devices','operations_tasks','display_images','turnover_templates','message_rules','message_queue'];
+ const keys=['properties','reservations','rates','templates','displays','locks','lockAssignments','lockConnections','comparables','displayDevices','tasks','displayImages','turnoverTemplates','messageRules','messageQueue'];
  const results=await Promise.all(tables.map(t=>db.from('ts_'+t).select(t==='display_devices'?'id,owner_id,property_id,name,revoked,expires_at,pairing_expires_at':t==='display_images'?'id,owner_id,property_id':'*').order(t==='reservations'?'arrival':t==='display_devices'?'expires_at':'created_at')));
  for(const r of results)if(r.error)throw Error(r.error.message);
  return Object.fromEntries(keys.map((k,i)=>[k,results[i].data]));

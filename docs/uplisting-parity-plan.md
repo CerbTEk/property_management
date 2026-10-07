@@ -116,3 +116,9 @@ Listing settings and confirmed manual booking edits are available. Maintenance a
 ## Door-lock planning
 
 Owned lock inventory and room/shared-entrance assignments now support booking access previews with timezone-aware check-in and checkout. A tested server-only TTLock inventory adapter and timed gateway passcode request builder are prepared, without a deployed provider route or credentials. Live passcode provisioning, reconciliation and physical validation remain pending. See [door locks](door-locks.md).
+
+## October 6: automatic turnovers and message preparation
+
+Automatic cleaning and inspection task creation now follows new confirmed bookings, with immutable per-task snapshots of editable property checklists. Existing bookings can be prepared explicitly. Cleaner assignments, staff permissions and reminders remain missing.
+
+Message templates now support editing/archival. Per-property event rules create durable booking-linked plans with rendered variables, booking-change recalculation, cancellation suppression, pause/dismiss controls and clock-change review. Message delivery, incoming threads, unified inbox, provider receipts and automatic-send workers remain missing. No prepared backlog may be flushed automatically on provider activation. See [turnover and message preparation](turnover-and-messaging.md).

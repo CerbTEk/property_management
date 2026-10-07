@@ -6,6 +6,7 @@ import {quote,money} from './model.mjs';
 import './style.css';
 import {Calendar} from './calendar';
 import {StayWorkflow} from './stay-workflow.jsx';
+import {Messages} from './messages.jsx';
 import {Operations} from './operations.jsx';
 import {PropertySetup} from './property-setup.jsx';
 import {Pricing} from './pricing.jsx';
@@ -32,7 +33,7 @@ function Dashboard({user}){const [data,setData]=useState({properties:[],reservat
 {tab==='operations'&&<Operations data={data} user={user} busy={busy} onAction={act} onRefresh={load}/>}
 {tab==='pricing'&&<Pricing key={focus?.propertyId||'pricing'} initialPropertyId={focus?.propertyId} properties={data.properties} rates={data.rates} reservations={data.reservations} comparables={data.comparables||[]} user={user} busy={busy} onAction={act}/>}
 {tab==='payments'&&<Payments user={user}/>}
-{tab==='messages'&&<section className="panel"><h2>Message drafts</h2><p>Drafts are saved here. Automatic delivery is not enabled.</p>{data.templates.map(t=><article className="draft" key={t.id}><h3>{t.name}</h3><p>{t.body}</p></article>)}<form onSubmit={e=>{const v=values(e);act(()=>insert('message_templates',{...v,owner_id:user.id}));}}><Field label="Template name" name="name" maxLength="120"/><label>Message<textarea required name="body" maxLength="4000" rows="5"/></label><button disabled={busy}>Save draft</button></form></section>}
+{tab==='messages'&&<Messages data={data} user={user} busy={busy} onAction={act} onRefresh={load}/>}
 {tab==='guest'&&<GuestExperience key={focus?.propertyId||'guest'} initialPropertyId={focus?.propertyId} properties={data.properties} reservations={data.reservations} displays={data.displays} user={user} onSaved={load}/>}
 {tab==='locks'&&<DoorLocks initialPropertyId={focus?.propertyId} initialBookingId={focus?.bookingId} data={data} user={user} busy={busy} onAction={act}/>}
 {tab==='connections'&&<><section className="panel"><h2>Connection status</h2>{[['Airbnb','Direct partner access is being evaluated. Hospitable is an optional route with an application pending. No approved connection or credentials yet.'],['WelcomeScreen','Account verification and booking-feed setup are pending.'],['TTLock','Inventory, room/shared-entrance assignments and guest access plans are available in Door locks. Developer credentials and live account connection are pending.']].map(([name,text])=><article className="listing" key={name}><KeyRound/><div><h3>{name}</h3><p>{text}</p><span className="badge">Not connected</span></div></article>)}</section><section className="panel"><h2>Access plan</h2><p>Room-specific locks plus a shared entrance will be assigned after TTLock verification. No lock credentials are stored in this frontend.</p><button onClick={()=>{const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='treestand-backup.json';a.click();URL.revokeObjectURL(url);}}>Export workspace backup</button></section></>}

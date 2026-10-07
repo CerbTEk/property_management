@@ -1,0 +1,1 @@
+create index ts_turnover_templates_property_owner on public.ts_turnover_templates(property_id,owner_id);
