@@ -148,3 +148,7 @@ Bookings now records completed payments, linked partial refunds and immutable co
 ## October 6: fees and discount pricing rules
 
 Per-listing cleaning/extra-guest fees, weekly/monthly discounts and last-minute discounts now feed itemized estimates and explicitly reviewed booking charge drafts. Largest eligible accommodation discount wins without stacking. Rule edits are revision checked and never rewrite saved booking amounts. Automatic channel publishing, external dynamic pricing, tax calculation, availability-rule expansion and direct booking checkout remain pending. See [pricing rules](pricing-rules.md).
+
+## Reservation CSV migration increment
+
+Bookings now offers a mapped CSV import into an existing owned listing, with complete preview, stable original IDs, duplicate/change review, calendar conflicts and atomic batches. Imported message drafts remain held for separate delivery review; confirmed imports follow existing turnover/TV/access planning rules. Listing imports, financial migration, automatic provider amendments and actual export-format validation remain pending. See [reservation imports](booking-imports.md).
