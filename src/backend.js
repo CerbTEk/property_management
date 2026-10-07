@@ -1,4 +1,5 @@
 import {createClient} from '@supabase/supabase-js';
+import {loadWorkspacePages} from './workspace-pages.mjs';
 import {publicConnection} from './public-config.js';
 import {nativeLockCallback} from './native-lock-browser.mjs';
 const url=import.meta.env.VITE_SUPABASE_URL || publicConnection.url;
@@ -11,7 +12,11 @@ export const db=configured?createClient(url,key,{auth:{detectSessionInUrl:!nativ
 export async function workspace(){
  const tables=['properties','reservations','rates','message_templates','guest_displays','locks','lock_assignments','lock_connections','market_comparables','display_devices','operations_tasks','display_images','turnover_templates','message_rules','message_queue','operations_people','operations_defaults','staff_invites'];
  const keys=['properties','reservations','rates','templates','displays','locks','lockAssignments','lockConnections','comparables','displayDevices','tasks','displayImages','turnoverTemplates','messageRules','messageQueue','operationsPeople','operationsDefaults','staffInvites'];
- const results=await Promise.all(tables.map(t=>db.from('ts_'+t).select(t==='display_devices'?'id,owner_id,property_id,name,revoked,expires_at,pairing_expires_at':t==='display_images'?'id,owner_id,property_id':'*').order(t==='reservations'?'arrival':t==='display_devices'?'expires_at':'created_at')));
+ const results=await Promise.all(tables.map(t=>{
+  const columns=t==='display_devices'?'id,owner_id,property_id,name,revoked,expires_at,pairing_expires_at':t==='display_images'?'id,owner_id,property_id':'*',order=t==='reservations'?'arrival':t==='display_devices'?'expires_at':'created_at';
+  if(['properties','reservations','operations_tasks'].includes(t))return loadWorkspacePages((start,end,first)=>db.from('ts_'+t).select(columns,first?{count:'exact'}:{}).order(order).order('id').range(start,end));
+  return db.from('ts_'+t).select(columns).order(order);
+ }));
  for(const r of results)if(r.error)throw Error(r.error.message);
  return Object.fromEntries(keys.map((k,i)=>[k,results[i].data]));
 }
