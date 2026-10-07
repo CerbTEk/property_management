@@ -144,3 +144,7 @@ Hosts can save itemized USD accommodation, discount, fees, taxes and channel-fee
 ## October 6: host-recorded payment/refund ledger
 
 Bookings now records completed payments, linked partial refunds and immutable corrections with duplicate/retry controls. Current agreed charge snapshots provide remaining-balance and overpayment views. Cancelled or stale bookings require settlement review. Reports and CSVs separate dated host-recorded payment/refund totals from allocated booking charges. No money moves and no record claims processor verification. Stripe/channel reconciliation, actual refund actions, cancellation settlement and tax remittance remain pending. See [booking transactions](booking-transactions.md).
+
+## October 6: fees and discount pricing rules
+
+Per-listing cleaning/extra-guest fees, weekly/monthly discounts and last-minute discounts now feed itemized estimates and explicitly reviewed booking charge drafts. Largest eligible accommodation discount wins without stacking. Rule edits are revision checked and never rewrite saved booking amounts. Automatic channel publishing, external dynamic pricing, tax calculation, availability-rule expansion and direct booking checkout remain pending. See [pricing rules](pricing-rules.md).

@@ -41,3 +41,4 @@
 
 .report-stats small{display:block;margin-top:.5rem;color:var(--muted);font-size:.85rem;line-height:1.5}.report-stats strong{font-size:2rem}
 .booking-amounts{width:330px;max-width:100%;white-space:normal}.financial-confirm{display:flex;align-items:flex-start;line-height:1.5}.financial-confirm input{width:auto;margin-top:4px}.booking-amounts details article{border-bottom:1px solid var(--border);padding:12px 0}
+.quote-breakdown{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 16px;line-height:1.5}.quote-breakdown dt{color:var(--muted)}.quote-breakdown dd{margin:0;text-align:right;font-weight:600}
