@@ -5,7 +5,7 @@ export function TvVideo({video,onActive}){
  const element=useRef(null),loop=useRef(null),[notice,setNotice]=useState('');
  const source=video?.url?{...video,remote:true}:{id:'woodland-loop-v1',url:`${import.meta.env.BASE_URL}tv-scenes/woodland-loop.mp4`,remote:false};
  useEffect(()=>{
-  loop.current=createVideoLoop(element.current,{onError:setNotice,onActive});
+  loop.current=createVideoLoop(element.current,{onError:setNotice,onActive,fallbackUrl:`${import.meta.env.BASE_URL}tv-scenes/woodland-loop.mp4`});
   function visible(){loop.current?.visibility(!document.hidden);}
   function retry(e){if(e.isTrusted&&!document.hidden)loop.current?.play();}
   document.addEventListener('visibilitychange',visible);window.addEventListener('keydown',retry);window.addEventListener('pointerdown',retry);
