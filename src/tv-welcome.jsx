@@ -4,7 +4,7 @@ import {BookOpen,Compass,Phone,ShieldCheck,ChevronLeft,ChevronRight,Pause,Play,X
 const starterPhotos=[['woodland-lake.webp','A moment of calm'],['forest-path.webp','Room to unwind'],['mountain-sunset.webp','Make yourself at home']];
 export function TvWelcome({content,preview=false,installed=false,videoActive=false}){
  const {property,display}=content;
- const images=display.images?.length?display.images:starterPhotos.map(([file,caption])=>({id:file,url:`${import.meta.env.BASE_URL}tv-scenes/${file}`,caption}));
+ const images=!installed&&display.images?.length?display.images:starterPhotos.map(([file,caption])=>({id:file,url:`${import.meta.env.BASE_URL}tv-scenes/${file}`,caption}));
  const [index,setIndex]=useState(0),[paused,setPaused]=useState(false),[section,setSection]=useState(''),[failed,setFailed]=useState([]);
  const tabs=useRef([]),close=useRef(null);const photo=images[index%images.length];
  const duration=[10,20,30,60].includes(display.slideshow_seconds)?display.slideshow_seconds:20;
