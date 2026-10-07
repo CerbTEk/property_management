@@ -7,3 +7,12 @@ button:focus,input:focus,select:focus{outline:4px solid #f5f2e9;outline-offset:5
 .tv-exit{position:fixed;inset:0;z-index:10;background:#102b25e8;display:flex;align-items:center;justify-content:center}
 .tv-exit section{padding:50px;border-radius:24px;background:#f5f2e9;color:#123c35;max-width:700px}
 .tv-exit h2{font-size:36px}.tv-exit p{font-size:23px}.tv-exit button{margin:20px 16px 0 0;font-size:22px}.tv-exit button:focus{outline-color:#123c35}
+
+/* LG detects the visible video plane: full viewport, no opacity/transform. */
+.tv-background-video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:0;pointer-events:none;border:0}
+.tv-video-mode{background:transparent;isolation:auto;z-index:1}
+.tv-video-mode .tv-photo-stage{z-index:0}
+.tv-video-mode .tv-photo-shade{position:fixed;z-index:0}
+.tv-video-mode>.tv-welcome-header,.tv-video-mode>.tv-welcome-body,.tv-video-mode>.tv-welcome-footer{position:relative;z-index:1}
+.tv-video-notice{position:relative;z-index:2;color:#f5f2e9;background:#123c35;padding:10px}
+

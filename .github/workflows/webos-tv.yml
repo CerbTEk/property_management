@@ -2,7 +2,7 @@ name: LG webOS TV pilot
 on:
   push:
     branches: [main]
-    paths: ['webos-tv/**', 'scripts/build-webos.mjs', 'src/tv-*.jsx', 'src/tv-*.mjs', 'src/pairing-code.mjs', 'src/public-config.*', 'src/style.css', 'public/**', 'package*.json', '.github/workflows/webos-tv.yml']
+    paths: ['webos-tv/**', 'scripts/build-webos.mjs', 'scripts/render-display-video.py', 'scripts/render-starter-video.py', 'src/tv-*.jsx', 'src/tv-*.mjs', 'src/pairing-code.mjs', 'src/public-config.*', 'src/style.css', 'public/**', 'package*.json', '.github/workflows/webos-tv.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -18,6 +18,13 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: node --test tests/webos-remote.test.mjs tests/pairing-code.test.mjs tests/tv-music.test.mjs
+      - name: Generate bundled woodland video
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python3 -m venv /tmp/treestand-video-env
+          /tmp/treestand-video-env/bin/pip install --disable-pip-version-check Pillow==12.3.0
+          /tmp/treestand-video-env/bin/python scripts/render-starter-video.py
       - run: npm run build:webos
       - name: Install isolated LG packaging tool
         run: npm install --prefix "$RUNNER_TEMP/treestand-webos-cli" @webos-tools/cli@3.2.6 --ignore-scripts --no-audit --no-fund
@@ -36,3 +43,4 @@ jobs:
             webos-tv/INSTALL.md
           retention-days: 30
           if-no-files-found: error
+

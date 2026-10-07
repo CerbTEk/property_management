@@ -1,6 +1,6 @@
 {
   "id": "com.cerbtek.treestand.tv",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "vendor": "CerbTek LLC",
   "type": "web",
   "main": "index.html",
@@ -13,5 +13,7 @@
   "iconColor": "#123C35",
   "splashBackground": "splash.png",
   "disableBackHistoryAPI": true,
+  "screenSaverProperties": {"preferredType": 2},
   "requiredACG": []
 }
+

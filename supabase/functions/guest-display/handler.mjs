@@ -1,5 +1,6 @@
 import {localClock,currentGuest} from './schedule.mjs';
 import {screenImages} from './media.mjs';
+import {screenVideo} from './video.mjs';
 export async function tokenHash(token){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))).map(b=>b.toString(16).padStart(2,'0')).join('');}
 export function createHandler(admin,clock=()=>new Date()){
  return async req=>{
@@ -44,8 +45,9 @@ export function createHandler(admin,clock=()=>new Date()){
    }
    const {name,check_in,check_out}=p.data;
    const {title,welcome,guidebook,recommendations,contact,house_rules='',slideshow_seconds=20,music_enabled=true,music_default='woodland',music_volume=15}=display;
-   const images=await screenImages(admin,device);
-   return reply({property:{name,check_in,check_out},display:{title:title.replaceAll('{{guest}}',guest),welcome,guidebook,recommendations,contact,house_rules,slideshow_seconds,music_enabled,music_default,music_volume,images}});
+   const [images,video]=await Promise.all([screenImages(admin,device),screenVideo(admin,device)]);
+   return reply({property:{name,check_in,check_out},display:{title:title.replaceAll('{{guest}}',guest),welcome,guidebook,recommendations,contact,house_rules,slideshow_seconds,music_enabled,music_default,music_volume,images,video}});
   }catch{return reply({error:'Display temporarily unavailable'},503);}
  };
 }
+
