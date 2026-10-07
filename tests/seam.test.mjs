@@ -53,3 +53,13 @@ test('Seam rejects TTLock accounts and requires a new login link for older TTLoc
  await assert.rejects(()=>client(()=>({connect_webview:{...view,selected_provider:'ttlock'}})).inventory(owner,viewId),e=>e.code==='direct_required');
  await assert.rejects(()=>client(()=>({connect_webview:{...view,accepted_providers:['ttlock','yale']}})).resume(owner,viewId),e=>e.code==='direct_required');
 });
+test('fresh device ownership skips unfinished older sign-ins but rejects account changes',async()=>{
+ const pending='00000000-0000-0000-0000-000000000090';let changed=false;
+ const seam=client(url=>{
+  if(url.pathname==='/connect_webviews/get')return {connect_webview:url.searchParams.get('connect_webview_id')===pending?{...view,connect_webview_id:pending,login_successful:false}:view};
+  if(url.pathname==='/devices/list')return {devices:[device]};
+  if(url.pathname==='/devices/get')return {device:changed?{...device,connected_account_id:pending}:device};
+ });
+ assert.equal((await seam.ownedDevice(owner,[pending,viewId],deviceId)).device_id,deviceId);
+ changed=true;await assert.rejects(()=>seam.ownedDevice(owner,[viewId],deviceId),e=>e.code==='ownership');
+});

@@ -1,5 +1,6 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.58.0';
 import {seamClient,SeamError} from '../../../server/seam.mjs';
+import {seamAccess} from '../../../server/seam-access.mjs';
 import {directTTLockConnection} from '../../../server/direct-ttlock.mjs';
 import {ttlockAccounts} from '../../../server/ttlock-auth.mjs';
 import {ttlockAccess} from '../../../server/ttlock-access.mjs';
@@ -97,6 +98,15 @@ Deno.serve(async req=>{
    return reply({provider:body.provider,imported,ignored:inventory.ignored,mode:'native',liveValidated:false});
   }catch(e){return reply({error:e instanceof NativeOAuthError?e.message:'Manufacturer connection unavailable. Retry sign-in.',code:e instanceof NativeOAuthError?e.code:'unavailable'},e instanceof NativeOAuthError&&e.code==='ownership'?403:e instanceof NativeOAuthError&&e.code==='rate_limit'?429:e instanceof NativeOAuthError&&e.code==='refresh_pending'?409:502);}
  }
+ if(body.action==='access_status'){
+  const admin=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
+  const [receipts,activation]=await Promise.all([
+   admin.from('ts_access_receipts').select('booking_id,lock_id,state,updated_at').eq('owner_id',owner),
+   admin.from('ts_access_device_activation').select('provider,device_id').eq('owner_id',owner)
+  ]);
+  if(receipts.error||activation.error)return reply({error:'Guest access status is unavailable.'},503);
+  return reply({receipts:receipts.data,activation:activation.data});
+ }
  const apiKey=Deno.env.get('SEAM_API_KEY');
  if(body.action==='status'&&!apiKey)return reply({configured:false,ready:false,mode:null});
  if(!apiKey)return reply({error:'Seam is not configured. A server API key is required.',code:'not_configured'},503);
@@ -106,6 +116,19 @@ Deno.serve(async req=>{
   const status=await seam.status();
   if(body.action==='status')return reply(status);
   if(!status.ready)return reply({error:'The Seam workspace is suspended. Resolve its account status first.'},503);
+  if(body.action==='seam_preflight'){
+   if(typeof body.lock_id!=='string'||!/^[a-f0-9-]{36}$/i.test(body.lock_id))return reply({error:'Choose a lock.'},400);
+   const {data:lock,error}=await admin.from('ts_locks').select('id,provider,provider_device_id,capabilities').eq('id',body.lock_id).eq('owner_id',owner).maybeSingle();
+   if(error)throw Error('storage');
+   if(!lock||lock.provider!=='seam')return reply({error:'Lock unavailable.'},404);
+   const {data:connections,error:connectionError}=await admin.from('ts_lock_connections').select('id').eq('owner_id',owner);
+   if(connectionError)throw Error('storage');
+   const access=seamAccess({client:seam,ownerId:owner,connectionIds:connections.map(c=>c.id)});
+   const observation=await access.observe(lock.provider_device_id);
+   const saved=await admin.from('ts_locks').update({online:observation.online,synced_at:observation.observed_at,capabilities:{...lock.capabilities,online_codes:observation.timed_codes,code_lengths:observation.code_lengths}}).eq('id',lock.id).eq('owner_id',owner).eq('provider_device_id',observation.device_id).select('id');
+   if(saved.error||saved.data?.length!==1)throw Error('storage');
+   return reply({verified:observation.timed_codes,message:observation.timed_codes?'Online connection and scheduled-code support verified. Assign this lock to its listing, then complete a keypad test before activation.':'This lock needs an online connection and verified scheduled-code support before guest access can be activated.'});
+  }
   if(body.action==='connect'){
    const view=await seam.connect(owner);
    const {error}=await admin.from('ts_lock_connections').insert({id:view.id,owner_id:owner});

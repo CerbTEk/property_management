@@ -6,8 +6,8 @@ export function seamClient({apiKey,fetcher=fetch}){
  async function request(path,params={},method='GET'){
   if(!apiKey)throw new SeamError('Seam is not configured.','not_configured');
   const url=new URL('https://connect.getseam.com/'+path);
-  if(method==='GET')for(const [k,v]of Object.entries(params))url.searchParams.set(k,String(v));
-  let response;try{response=await fetcher(url.toString(),{method,headers:{Authorization:'Bearer '+apiKey,'Content-Type':'application/json'},...(method==='GET'?{}:{body:JSON.stringify(params)}),redirect:'error',signal:AbortSignal.timeout(15000)});}catch{throw new SeamError('Lock provider is unavailable.','unavailable');}
+  if(method==='GET'||method==='DELETE')for(const [k,v]of Object.entries(params))url.searchParams.set(k,String(v));
+  let response;try{response=await fetcher(url.toString(),{method,headers:{Authorization:'Bearer '+apiKey,'Content-Type':'application/json'},...(['GET','DELETE'].includes(method)?{}:{body:JSON.stringify(params)}),redirect:'error',signal:AbortSignal.timeout(15000)});}catch{throw new SeamError('Lock provider is unavailable.','unavailable');}
   if(!response.ok)throw new SeamError('Lock provider rejected the request.');
   try{return await response.json();}catch{throw new SeamError('Invalid provider response.','invalid_response');}
  }
@@ -22,6 +22,19 @@ export function seamClient({apiKey,fetcher=fetch}){
   return url.toString();
  }
  return {
+  request,
+  async ownedDevice(ownerId,viewIds,deviceId){
+   if(!uuid.test(deviceId)||!Array.isArray(viewIds))throw new SeamError('Invalid device.','ownership');
+   let found;
+   for(const viewId of viewIds){
+    let locks;try{locks=await this.inventory(ownerId,viewId,true);}catch(e){if(['pending','direct_required'].includes(e.code))continue;throw e;}
+    found=locks.find(l=>l.provider_device_id===deviceId);if(found)break;
+   }
+   if(!found)throw new SeamError('The connected account does not own this device.','ownership');
+   const {device}=await request('devices/get',{device_id:deviceId});
+   if(!device||device.device_id!==deviceId||device.connected_account_id!==found.connected_account_id)throw new SeamError('Device ownership changed.','ownership');
+   return device;
+  },
   async status(){
    const {workspace}=await request('workspaces/get');
    if(!workspace||!uuid.test(workspace.workspace_id)||typeof workspace.is_sandbox!=='boolean'||typeof workspace.is_suspended!=='boolean')throw new SeamError('Workspace could not be verified.','invalid_response');
@@ -41,7 +54,7 @@ export function seamClient({apiKey,fetcher=fetch}){
    const view=checkView(connect_webview,ownerId);
    return {id:view.connect_webview_id,url:connectionUrl(view)};
   },
-  async inventory(ownerId,viewId){
+  async inventory(ownerId,viewId,verification=false){
    if(!uuid.test(ownerId)||!uuid.test(viewId))throw new SeamError('Invalid connection.','ownership');
    const {connect_webview}=await request('connect_webviews/get',{connect_webview_id:viewId});
    const view=checkView(connect_webview,ownerId);
@@ -55,7 +68,7 @@ export function seamClient({apiKey,fetcher=fetch}){
      if(!uuid.test(device.device_id)||device.connected_account_id!==view.connected_account_id)throw new SeamError('Device ownership mismatch.','ownership');
      if(seen.has(device.device_id))throw new SeamError('Duplicate inventory device.','invalid_response');seen.add(device.device_id);
      const p=device.properties||{};
-     locks.push({provider:'seam',provider_device_id:device.device_id,name:String(device.display_name||device.nickname||'Smart lock').slice(0,120),brand:seamProviders.includes(view.selected_provider)?view.selected_provider:'other',online:typeof p.online==='boolean'?p.online:null,capabilities:{online_codes:device.can_program_online_access_codes===true,code_lengths:Array.isArray(p.supported_code_lengths)?p.supported_code_lengths.filter(n=>Number.isInteger(n)&&n>=4&&n<=12):[]},synced_at:new Date().toISOString()});
+     locks.push({...verification?{connected_account_id:device.connected_account_id}:{},provider:'seam',provider_device_id:device.device_id,name:String(device.display_name||device.nickname||'Smart lock').slice(0,120),brand:seamProviders.includes(view.selected_provider)?view.selected_provider:'other',online:typeof p.online==='boolean'?p.online:null,capabilities:{online_codes:device.can_program_online_access_codes===true,code_lengths:Array.isArray(p.supported_code_lengths)?p.supported_code_lengths.filter(n=>Number.isInteger(n)&&n>=4&&n<=12):[]},synced_at:new Date().toISOString()});
     }
     if(!payload.pagination?.has_next_page)return locks;
     const next=payload.pagination.next_page_cursor;

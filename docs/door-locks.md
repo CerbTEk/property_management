@@ -103,3 +103,17 @@ TTLock API documentation checked October 6, 2026:
 - https://euopen.ttlock.com/doc/api/v3/gateway/listByLock
 - https://euopen.ttlock.com/doc/api/v3/gateway/list
 - https://euopen.ttlock.com/doc/api/v3/lock/queryOpenState
+
+## Seam execution and scheduler — October 7
+
+Seam now shares the revision-fenced execution runner with native TTLock. The Seam adapter verifies the owner's completed connection, connected account and device before reads and writes. It programs the derived guest code with the exact stay window, updates an existing receipt when dates change, and stages removal before replacement. Managed and unmanaged PIN collisions block creation. Pending programming results remain uncertain until the exact code identity, protected tag and time window are confirmed set or scheduled on the device. Removal additionally requires an authenticated `access_code.removed_from_device` event after the operation checkpoint, not merely an HTTP delete acknowledgement. Periodic audits flag external edits without overwriting them.
+
+Apply `database/seam_access_execution.sql`, deploy the updated `smart-lock-connect` and `treestand-access-runner` dependency graphs, then apply `database/access_runner_schedule.sql`. The scheduler runs every minute using a dedicated random Vault token; only its SHA-256 digest is readable by the server worker. Browser roles cannot access credentials, activation rows, the queue or receipt ledger. The connector exposes only owner-scoped receipt summaries and activation status, with no PIN/tag/provider credential. Host buttons can verify live device connection and code capability without changing door access.
+
+Seam devices require service-managed activation in `ts_access_device_activation` after a controlled model/keypad test. Its primary key is `(owner_id, provider, device_id)`. Do not remove activation while active receipts still need cleanup. With no activated devices, the scheduled worker never contacts a host provider or writes codes. TTLock keeps its existing native credential and test-device controls and is never routed through Seam.
+
+Physical completion still requires a host to authorize their own provider account, import/assign the lock, verify capability and test the keypad with a controlled reservation. Check creation, date changes, cancellation and expired access before enabling guest use. Provider confirmation and automated tests do not prove physical keypad behavior. No lock had been imported at deployment time.
+
+API methods verified against Seam's current documentation and official JavaScript SDK (`@seamapi/http` 2.35.0): POST `/access_codes/create`, PATCH `/access_codes/update`, DELETE `/access_codes/delete`, GET `/access_codes/list`, GET `/access_codes/unmanaged/list`, GET `/events/list`. No public code-writing endpoint, webhook receiver or remote-unlock action is exposed; authenticated periodic polling drives reconciliation.
+
+The deployed worker falls back to a stable, server-only Vault fingerprint key when the legacy environment secret is absent. Apply `database/access_worker_runtime_config.sql` after the scheduler migration. Its private service-only accessor returns only this secret to the authenticated backend; browser roles have no execution privileges. No plaintext secret is committed or returned to hosts.
