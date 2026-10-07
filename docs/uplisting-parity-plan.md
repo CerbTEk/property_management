@@ -156,3 +156,7 @@ Bookings now offers a mapped CSV import into an existing owned listing, with com
 ## Listing CSV migration increment
 
 Properties now supports reviewed basic listing CSV imports and explicit linking to existing listings when all settings match. Immutable original listing IDs appear in the booking-import listing selector. Duplicate/changed records require review and batches save atomically. Financial migration, content/media/dated-price migration and actual source-export validation remain pending. See [listing imports](property-imports.md).
+
+## Booking charge migration increment
+
+Bookings now imports reviewed itemized USD charges into the first financial revision of an already imported confirmed booking. Original IDs plus guest/stay context match records; existing charge history, changed/cancelled stays and malformed amounts require review. Immutable receipts and atomic batches prevent duplicate or partial writes. Imported charge revisions feed existing reporting. Payment/refund migration, cancelled-stay settlement, payout reconciliation and actual export-file validation remain pending. See [charge imports](financial-imports.md).

@@ -3,7 +3,8 @@ import {centsInput} from './booking-financials.mjs';
 export const propertyImportFields=[['external_id','Original listing ID'],['name','Listing name'],['timezone','Timezone'],['currency','Currency (USD)'],['weekday','Weekday rate ($)'],['weekend','Friday/Saturday rate ($)'],['markup','Channel markup (%)'],['max_guests','Maximum guests'],['min_stay','Minimum nights'],['check_in','Check-in (HH:MM)'],['check_out','Check-out (HH:MM)']];
 export const parsePropertyCsv=text=>parseCsv(text,{noun:'listing',maxRows:50});
 export const propertyMapping=headers=>Object.fromEntries(propertyImportFields.map(([key])=>[key,headers.find(h=>h.toLowerCase()===key)||'']));
-export const sameSnapshot=(a,b)=>JSON.stringify(Object.keys(a).sort().map(k=>[k,a[k]]))===JSON.stringify(Object.keys(b).sort().map(k=>[k,b[k]]));
+const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(k=>[k,canonical(value[k])])):value;
+export const sameSnapshot=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
 export function listingSnapshot(p,external_id){return {external_id,name:p.name,timezone:p.timezone,currency:'USD',weekday_cents:p.weekday_cents,weekend_cents:p.weekend_cents,markup_percent:Number(p.markup_percent),max_guests:p.max_guests,min_stay:p.min_stay,check_in:p.check_in.slice(0,5),check_out:p.check_out.slice(0,5)};}
 export function previewPropertyImport(csv,mapping,source,properties=[],receipts=[],targets={}){
  if(!['uplisting','airbnb','other'].includes(source))throw Error('Choose an import source.');const columns=[];
