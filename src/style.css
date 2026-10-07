@@ -40,3 +40,4 @@
 .staff-shell{max-width:1200px;margin:auto}.staff-shell .workspace{padding:2rem}.staff-shell .public-header{padding:1.5rem 2rem;background:var(--pine,#143d35)}
 
 .report-stats small{display:block;margin-top:.5rem;color:var(--muted);font-size:.85rem;line-height:1.5}.report-stats strong{font-size:2rem}
+.booking-amounts{width:330px;max-width:100%;white-space:normal}.financial-confirm{display:flex;align-items:flex-start;line-height:1.5}.financial-confirm input{width:auto;margin-top:4px}.booking-amounts details article{border-bottom:1px solid var(--border);padding:12px 0}

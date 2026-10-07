@@ -14,6 +14,10 @@ CSV exports include listing/timezone or monthly period, capacity, booked/blocked
 
 Listing, reservation and operations-task workspace reads paginate in 500-record batches with exact initial counts and stable secondary ID sorting. Incomplete, duplicate or count-changing results fail rather than silently reporting capped data. The client read is not a database snapshot: simultaneous edits keeping the same count may still require a refresh. Reads over 100,000 records fail with an explicit message; server aggregates are a future scale improvement.
 
-Revenue, ADR, RevPAR and payouts are intentionally unavailable until booking financial snapshots and payment reconciliation exist. Current rates must never reconstruct historical earnings. No channel import is implied by a report.
+Saved booking charge revisions now support allocated booked charges and accommodation ADR with explicit coverage checks. Collected payments, refunds, RevPAR accounting and payouts still require reconciliation. Current rates never reconstruct historical earnings. No channel import is implied by a report.
 
 Validation covers partial periods, back-to-back stays, active/released blocks, cancellations, conflicts, invalid dates, weighted occupancy, fully blocked inventory, month boundaries, leap days/DST, task timezone boundaries, listing selection, CSV safety and pagination failures.
+
+## Booking charge reporting update
+
+Saved booking charge revisions now provide booked charge, tax, channel-fee and accommodation ADR reporting. Financial coverage is explicit and stale records are excluded. This replaces the previous financial-reporting placeholder without claiming collected-payment or payout reconciliation. See [booking financials](booking-financials.md) for allocation and coverage rules.

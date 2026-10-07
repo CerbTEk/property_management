@@ -136,3 +136,7 @@ Staff invitation and opt-in work-reminder email transport is now prepared with p
 ## October 6: calendar and operations reporting
 
 The Reports blade now includes listing and monthly booked occupancy, nights, blocks, arrivals/departures, overlapping cancellations and due-date task status, with filtered CSV exports. Listing/calendar/task reads paginate and fail on detected incomplete data. Reports use saved Treestand records, not a connected OTA feed. Revenue/ADR/payout reports still require financial snapshots and reconciliation. See [reports](reports.md).
+
+## October 6: immutable booking charge records
+
+Hosts can save itemized USD accommodation, discount, fees, taxes and channel-fee revisions for confirmed bookings. Changes to booking dates/listing/guest count require review; current rates never rewrite financial history. Reports now include allocated booked charges, taxes, channel fees and fully covered accommodation ADR, with financial CSV exports and explicit missing/stale coverage. Payment collection, refunds, cancellation-fee reconciliation, automatic tax calculation/remittance and payouts remain pending. See [booking financials](booking-financials.md).

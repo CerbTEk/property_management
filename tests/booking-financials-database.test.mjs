@@ -1,0 +1,22 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';import {PGlite} from '@electric-sql/pglite';import {btree_gist} from '@electric-sql/pglite/contrib/btree_gist';
+test('financial revisions bind owner and booking context, retain immutable history, enforce MFA and reject stale or invalid writes',async()=>{
+ const db=new PGlite({extensions:{btree_gist}}),a='00000000-0000-0000-0000-000000000001',b='00000000-0000-0000-0000-000000000002';
+ try{await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;create function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb$$;grant usage on schema auth to authenticated;insert into auth.users values('${a}'),('${b}');`);
+ for(const file of ['schema','calendar_controls','booking_financials'])await db.exec(await readFile(new URL(`../database/${file}.sql`,import.meta.url),'utf8'));
+ const login=async(id,aal='aal2')=>db.exec(`reset role;set role authenticated;select set_config('request.jwt.claim.sub','${id}',false);select set_config('request.jwt.claims','{"aal":"${aal}"}',false);`);
+ await login(a);const p=(await db.query(`insert into ts_properties(owner_id,name,weekday_cents,weekend_cents) values($1,'Synthetic financial room',5600,7000) returning id`,[a])).rows[0].id;
+ const booking=(await db.query(`insert into ts_reservations(owner_id,property_id,guest,arrival,departure,guests) values($1,$2,'Synthetic','2026-10-01','2026-10-04',1) returning id`,[a,p])).rows[0].id;
+ const amounts={accommodation_cents:20000,discount_cents:1000,cleaning_cents:2000,extra_guest_cents:500,other_fee_cents:0,tax_cents:1500,channel_fee_cents:900};
+ const save=(expected=0,patch={},departure='2026-10-04',property=p)=>db.query('select ts_save_booking_financials($1,$2,$3,$4,$5,$6,$7,$8) as id',[booking,expected,property,'2026-10-01',departure,1,JSON.stringify({...amounts,...patch}),'Synthetic revision']);
+ const first=(await save()).rows[0].id;assert.equal(Number((await db.query('select total_cents from ts_booking_financials')).rows[0].total_cents),23000);
+ await assert.rejects(()=>save(),/Amounts changed/);await assert.rejects(()=>save(1,{},'2026-10-05'),/Booking changed/);await assert.rejects(()=>save(1,{discount_cents:30000}),e=>e.code==='23514');await assert.rejects(()=>save(1,{tax_cents:1.5}),/whole non-negative/);await assert.rejects(()=>save(1,{channel_fee_cents:100000}),e=>e.code==='23514');
+ await assert.rejects(()=>db.query('update ts_booking_financials set tax_cents=0 where id=$1',[first]),e=>e.code==='42501');await assert.rejects(()=>db.query('delete from ts_booking_financials where id=$1',[first]),e=>e.code==='42501');
+ await assert.rejects(()=>db.query('select ts_save_booking_financials($1,$2,$3,$4,$5,$6,$7,$8)',[booking,1,p,'2026-10-01','2026-10-04',1,JSON.stringify(amounts),'']),e=>e.code==='23514');
+ await db.query('update ts_rates set amount_cents=99999');await db.query('update ts_properties set weekday_cents=9900 where id=$1',[p]);assert.equal(Number((await db.query('select accommodation_cents from ts_booking_financials')).rows[0].accommodation_cents),20000);
+ await db.query("update ts_reservations set departure='2026-10-05' where id=$1",[booking]);await assert.rejects(()=>save(1),/Booking changed/);await save(1,{accommodation_cents:30000},'2026-10-05');assert.equal((await db.query('select * from ts_booking_financials')).rows.length,2);
+ await login(b);assert.equal((await db.query('select * from ts_booking_financials')).rows.length,0);await assert.rejects(()=>save(2,{},'2026-10-05'),/confirmed booking/);
+ await login(a,'aal1');assert.equal((await db.query('select * from ts_booking_financials')).rows.length,0);await assert.rejects(()=>save(2,{},'2026-10-05'),/Authenticator required/);
+ await login(a);await db.query("update ts_reservations set status='cancelled' where id=$1",[booking]);await assert.rejects(()=>save(2,{},'2026-10-05'),/confirmed booking/);assert.equal((await db.query('select * from ts_booking_financials')).rows.length,2);
+ await db.exec('reset role;set role anon;');await assert.rejects(()=>db.query('select * from ts_booking_financials'),e=>e.code==='42501');await assert.rejects(()=>save(2,{},'2026-10-05'),e=>e.code==='42501');
+ }finally{await db.close();}
+});
