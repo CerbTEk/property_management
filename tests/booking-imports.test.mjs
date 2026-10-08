@@ -6,8 +6,9 @@ test('CSV parser supports BOM, escaped quotes, commas, embedded CRLF and rejects
  const csv=parseBookingCsv('\uFEFFa,b\r\n"Guest, \"\"J\"\"","one\r\ntwo"\r\n');assert.deepEqual(csv,{headers:['a','b'],rows:[['Guest, "J"','one\r\ntwo']]});
  for(const input of ['a,b\n"open,b','a,b\n"a"x,b','a,b\na"b,c','a,a\nx,y','a,b\nx','a,b\n','x'.repeat(524289),'a\n'+Array(201).fill('x').join('\n')])assert.throws(()=>parseBookingCsv(input));
 });
-test('preview normalizes status and only stores the phone suffix, with capacity and strict date validation',()=>{
+test('preview normalizes status and retains full phone plus suffix, with capacity and strict date validation',()=>{
  const p=preview();assert.equal(p.added,1);assert.equal(p.rows[0].record.guest_phone_last4,'0123');assert.equal('phone' in p.rows[0].record,false);
+ assert.equal(p.rows[0].record.guest_phone,'+15555550123');
  assert.equal(preview(line.replace('confirmed','canceled')).rows[0].record.status,'cancelled');
  for(const bad of [line.replace('2026-11-01','2026-02-30'),line.replace(',2,',',3,'),line.replace(',2,',',1.5,'),line.replace('confirmed','pending'),line.replace('+1 555 555 0123','0123')])assert.equal(preview(bad).errors,1);
  const csv=parseBookingCsv(header+line);assert.throws(()=>previewBookingImport(csv,{},property,'uplisting'),/Map/);assert.throws(()=>previewBookingImport(csv,{...suggestMapping(csv.headers),guest:'external_id'},property,'uplisting'),/only one/);

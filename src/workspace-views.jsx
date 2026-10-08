@@ -12,7 +12,7 @@ export function ViewTabs({children,label='Workspace views',value,onChange,initia
 export function ViewPanel({children}){return <>{children}</>;}
 
 export const navigation=[
- {label:'Daily work',items:[['overview','Today'],['bookings','Bookings'],['operations','Operations'],['messages','Messages']]},
+ {label:'Daily work',items:[['overview','Today'],['bookings','Bookings'],['guests','Guests'],['operations','Operations'],['messages','Messages']]},
  {label:'Your properties',items:[['properties','Properties'],['pricing','Pricing'],['guest','Guest experience'],['locks','Door locks']]},
  {label:'Business & setup',items:[['reports','Reports'],['payments','Payments'],['connections','Connections'],['migration','Migration']]}
 ];

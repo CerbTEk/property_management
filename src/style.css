@@ -89,3 +89,7 @@
 @media(prefers-reduced-motion:reduce){.host-shell .sidebar{transition:none}}
 
 @media(max-width:800px){.host-shell .sidebar{visibility:hidden}.host-shell .sidebar-open{visibility:visible}}
+
+.returning-guest-badge{display:flex;align-items:center;gap:6px;width:fit-content;margin-top:6px;padding:4px 8px;border:1px solid #99ccad;border-radius:20px;background:#e7f2e9;color:#123c35;font-size:12px;font-weight:600;line-height:1.4}
+
+.guest-profile-list{display:grid;gap:18px;margin-top:22px}.guest-profile-card{border:1px solid #d8e3d9;border-radius:14px;padding:20px}.guest-profile-card header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.guest-profile-card h3{margin:0}.guest-profile-card header p{margin:4px 0}.guest-profile-card details{margin-top:14px}.guest-profile-notes,.guest-private-summary p{white-space:pre-wrap;overflow-wrap:anywhere}.guest-private-summary{grid-column:1/-1;background:#e7f2e9;border-radius:10px;padding:14px}.guest-notes-field{grid-column:1/-1}
