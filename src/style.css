@@ -89,3 +89,5 @@
 @media(prefers-reduced-motion:reduce){.host-shell .sidebar{transition:none}}
 
 @media(max-width:800px){.host-shell .sidebar{visibility:hidden}.host-shell .sidebar-open{visibility:visible}}
+
+.returning-guest-badge{display:flex;align-items:center;gap:6px;width:fit-content;margin-top:6px;padding:4px 8px;border:1px solid #99ccad;border-radius:20px;background:#e7f2e9;color:#123c35;font-size:12px;font-weight:600;line-height:1.4}
