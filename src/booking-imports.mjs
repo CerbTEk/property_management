@@ -1,3 +1,4 @@
+import {normalizeGuestPhone} from './guest-profiles.mjs';
 import {validDay,nights} from './model.mjs';
 import {phoneLastFour} from './phone-code.mjs';
 export const importFields=[['external_id','Original booking ID',true],['guest','Guest name',true],['arrival','Arrival date',true],['departure','Departure date',true],['guests','Guest count',true],['status','Booking status',true],['phone','Guest phone number',false],['note','Note',false]];
@@ -28,16 +29,16 @@ export function previewBookingImport(csv,mapping,property,source,bookings=[],rec
   try{
    const external_id=get('external_id'),guest=get('guest'),arrival=get('arrival'),departure=get('departure'),count=get('guests'),statusRaw=get('status').toLowerCase();
    const status=['confirmed','booked','accepted'].includes(statusRaw)?'confirmed':['cancelled','canceled'].includes(statusRaw)?'cancelled':null;
-   if(!external_id||external_id.length>128)throw Error('Original booking ID must contain 1–128 characters.');
+   if(!external_id||external_id.length>128)throw Error('Original booking ID must contain 1â€“128 characters.');
    if(seen.has(external_id))throw Error('Repeated original booking ID in this file.');seen.add(external_id);
-   if(!guest||guest.length>100)throw Error('Guest name must contain 1–100 characters.');
-   if(!validDay(arrival)||!validDay(departure)||nights(arrival,departure)>365)throw Error('Use YYYY-MM-DD dates and stays of 1–365 nights.');
-   if(!/^\d+$/.test(count)||Number(count)<1||Number(count)>100)throw Error('Guest count must be a whole number from 1–100.');
+   if(!guest||guest.length>100)throw Error('Guest name must contain 1â€“100 characters.');
+   if(!validDay(arrival)||!validDay(departure)||nights(arrival,departure)>365)throw Error('Use YYYY-MM-DD dates and stays of 1â€“365 nights.');
+   if(!/^\d+$/.test(count)||Number(count)<1||Number(count)>100)throw Error('Guest count must be a whole number from 1â€“100.');
    if(!status)throw Error('Use confirmed or cancelled status. Pending/inquiry stays cannot be imported.');
    if(get('note').length>2000)throw Error('Note exceeds 2,000 characters.');
-   record={external_id,guest,arrival,departure,guests:Number(count),status,note:get('note'),guest_phone_last4:phoneLastFour(get('phone'))};
+   record={external_id,guest,arrival,departure,guests:Number(count),status,note:get('note'),guest_phone_last4:phoneLastFour(get('phone')),guest_phone:normalizeGuestPhone(get('phone'))};
    const prior=receipts.find(r=>r.source===source&&r.external_id===external_id);
-   if(prior){if(prior.property_id!==property.id||!same(prior.snapshot,record))throw Error('This original ID has different saved details. Review the existing booking.');action='skip';}
+   if(prior){if(prior.property_id!==property.id||!same(prior.snapshot,'guest_phone' in prior.snapshot?record:Object.fromEntries(Object.entries(record).filter(([key])=>key!=='guest_phone'))))throw Error('This original ID has different saved details. Review the existing booking.');action='skip';}
    else{
     if(status==='confirmed'&&(record.guests>property.max_guests||nights(arrival,departure)<property.min_stay))throw Error('Stay exceeds guest capacity or is below the listing minimum nights.');
     if(bookings.some(b=>b.property_id===property.id&&b.kind!=='block'&&b.guest.trim().toLowerCase()===guest.toLowerCase()&&b.arrival===arrival&&b.departure===departure))throw Error('Possible existing booking with the same guest and dates.');

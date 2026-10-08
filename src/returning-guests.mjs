@@ -1,16 +1,13 @@
 import {localInstant} from './lock-model.mjs';
-const identity=b=>{
- const name=String(b.guest||'').normalize('NFKC').trim().replace(/\s+/g,' ').toLocaleLowerCase('en-US');
- return name&&/^\d{4}$/.test(b.guest_phone_last4||'')?JSON.stringify([name,b.guest_phone_last4]):null;
-};
-// A contact match is a host hint, never an authentication or identity decision.
+// Saved profile links, never names or phone suffixes, identify booking history.
 export function returningGuests(data,ownerId,now=Date.now()){
  const result=new Map();if(!ownerId||!Number.isFinite(now))return result;
  const properties=new Map((data.properties||[]).filter(p=>p.owner_id===ownerId).map(p=>[p.id,p]));
+ const profiles=new Set((data.guestProfiles||[]).filter(g=>g.owner_id===ownerId).map(g=>g.id));
  const groups=new Map(),bookings=[];
  for(const b of data.reservations||[]){
   if(b.owner_id!==ownerId||b.kind==='block'||b.status!=='confirmed')continue;
-  const key=identity(b),p=properties.get(b.property_id);if(!key||!p)continue;
+  const key=b.guest_id||(profiles.has(b.id)?b.id:null),p=properties.get(b.property_id);if(!key||!profiles.has(key)||!p)continue;
   try{
    const start=localInstant(b.arrival,p.check_in,p.timezone),end=localInstant(b.departure,p.check_out,p.timezone);
    if(end<=start)continue;
