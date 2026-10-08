@@ -9,7 +9,7 @@ This is an LG webOS test app, not the Android APK and not a browser bookmark. It
 5. In the folder containing the downloaded package, run:
 
 ```
-ares-install --device treestand-tv com.cerbtek.treestand.tv_0.2.2_all.ipk
+ares-install --device treestand-tv com.cerbtek.treestand.tv_0.2.3_all.ipk
 ares-launch --device treestand-tv com.cerbtek.treestand.tv
 ```
 
@@ -20,6 +20,8 @@ Use the remote arrows and OK, or the Magic Remote pointer. Back closes house inf
 Developer Mode is temporary: extend its remaining session in the Developer Mode app before expiry. LG removes test-installed apps when Developer Mode is disabled. Permanent customer installation requires LG Seller Lounge submission, acceptance and store publication. This pilot has not been submitted to LG Apps. Installation and native video playback have been verified on an LG 86UQ7590PUD; use the acceptance checks below for each additional TV.
 
 ## Acceptance on the LG 86UQ7590PUD
+
+Version 0.2.3 uses the ivory brand color behind the evergreen transparent launcher icons. Previous versions used evergreen for both the logo and tile, making the mark difficult to see. Install the updated package on the TV to apply the change; verify the launcher tile shows the tree-and-home mark.
 
 Check the home-screen icon, full-screen launch, pairing keyboard and remote focus, reconnect after closing/restarting, continuous bundled and uploaded photo videos, all four house-information panels, automatic music and volume/pause, Back/exit confirmation, network loss clearing guest content, and host revocation. The app plays full-viewport MP4 video using LG's supported screensaver exception, with a bundled woodland fallback during connection errors. Other TV power settings remain under the TV's control; the app does not force boot launch. Each content refresh uses the existing one-minute interval.
 
