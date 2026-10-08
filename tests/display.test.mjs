@@ -16,7 +16,7 @@ test('valid device returns only its room welcome content with no-store and owner
  const admin={from(table){const chain={select(fields){log.push([table,'select',fields]);return this;},eq(k,v){log.push([table,k,v]);return this;},gt(k,v){log.push([table,k,v]);return this;},or(v){log.push([table,'expiry-filter',v]);return this;},order(){return this;},limit:async()=>({data:[],error:null}),async maybeSingle(){return {data:table==='ts_display_devices'?{owner_id:'owner-a',property_id:'room-a'}:{title:'Welcome',welcome:'Hello',guidebook:'Rules',recommendations:'Places',contact:'Host',music_enabled:true,music_default:'evening',music_volume:20}};},async single(){return {data:{name:'Room A',check_in:'15:00',check_out:'11:00'}};}};return chain;}};
  const handler=createHandler(admin);const response=await handler(new Request('https://display',{headers:{Authorization:'Bearer '+'a'.repeat(64)}}));
  assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');
- const body=await response.json();assert.deepEqual(Object.keys(body),['property','display']);assert.equal(body.display.music_default,'evening');assert.equal(body.display.music_volume,20);
+ const body=await response.json();assert.deepEqual(Object.keys(body),['property','stay','display']);assert.equal(body.display.music_default,'evening');assert.equal(body.display.music_volume,20);
  assert.ok(log.some(x=>x[0]==='ts_display_devices'&&x[1]==='revoked'&&x[2]===false));
  assert.ok(log.some(x=>x[0]==='ts_display_devices'&&x[1]==='expiry-filter'&&x[2].startsWith('expires_at.is.null,expires_at.gt.')));
  for(const table of ['ts_properties','ts_guest_displays'])assert.ok(log.some(x=>x[0]===table&&x[1]==='owner_id'&&x[2]==='owner-a'));
@@ -45,3 +45,4 @@ test('pairing code claim is atomic, single-use, expiring and never returns owner
  assert.ok(filters.some(([k,v])=>k==='revoked'&&v===false));assert.ok(filters.some(([k])=>k==='pairing_expires_at'));assert.ok(filters.some(([k])=>k==='expiry-filter'));
  assert.equal((await handler(new Request('https://display',{method:'POST',body:'invalid-json'}))).status,400);
 });
+
