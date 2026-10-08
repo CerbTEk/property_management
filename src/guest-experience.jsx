@@ -1,3 +1,4 @@
+import {ViewTabs,ViewPanel} from './workspace-views.jsx';
 import React,{useState} from 'react';
 import {db} from './backend';
 import {DisplayDevices} from './display-devices';
@@ -6,12 +7,12 @@ import {musicChoices} from './tv-music.mjs';
 import {TvWelcome} from './tv-welcome';
 import {displayDefaults as defaults} from './guest-content.mjs';
 import {BulkGuestContent} from './bulk-guest-content.jsx';
-export function GuestExperience({properties,reservations,displays,user,onSaved,initialPropertyId}){
+export function GuestExperience({properties,reservations,displays,user,onSaved,initialPropertyId,initialView}){
  const [propertyId,setPropertyId]=useState(initialPropertyId||properties[0]?.id||''),[photos,setPhotos]=useState({propertyId:'',images:[]});
  const property=properties.find(p=>p.id===propertyId);
- if(!property)return <section className="panel"><h2>Guest Experience</h2><p>Add a listing in Overview to create its welcome display and guidebook.</p></section>;
+ if(!property)return <section className="panel"><h2>Guest Experience</h2><p>Add a listing in Properties to create its welcome display and guidebook.</p></section>;
  const saved=displays.find(d=>d.property_id===propertyId);
- return <><section className="panel"><h2>Guest Experience</h2><p>Create your own welcome display and house guide alongside your bookings.</p><label>Listing<select value={propertyId} onChange={e=>setPropertyId(e.target.value)}>{properties.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><p className="notice">Room content syncs to connected TVs within one minute. Uploaded photo videos are prepared automatically and can take a few minutes.</p></section><BulkGuestContent key={propertyId+JSON.stringify(displays)} properties={properties} displays={displays} user={user} sourceId={propertyId} onSaved={onSaved}/><DisplayEditor key={propertyId+JSON.stringify(saved)} property={property} images={photos.propertyId===propertyId?photos.images:[]} saved={saved} bookings={reservations.filter(r=>r.property_id===propertyId&&r.status==='confirmed')} user={user} onSaved={onSaved}/><DisplayImages key={propertyId+'photos'} property={property} user={user} onLoaded={images=>setPhotos({propertyId,images})}/><DisplayDevices key={propertyId+'screens'} property={property} user={user}/></>;
+ return <><section className="panel"><h2>Guest Experience</h2><p>Create your own welcome display and house guide alongside your bookings.</p><label>Listing<select value={propertyId} onChange={e=>setPropertyId(e.target.value)}>{properties.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><p className="notice">Room content syncs to connected TVs within one minute. Uploaded photo videos are prepared automatically and can take a few minutes.</p></section><ViewTabs initial={initialView} label="Guest experience views"><ViewPanel id="content" label="Welcome & house guide"><DisplayEditor key={propertyId+JSON.stringify(saved)} property={property} images={photos.propertyId===propertyId?photos.images:[]} saved={saved} bookings={reservations.filter(r=>r.property_id===propertyId&&r.status==='confirmed')} user={user} onSaved={onSaved}/></ViewPanel><ViewPanel id="photos" label="Photos & slideshow"><DisplayImages key={propertyId+'photos'} property={property} user={user} onLoaded={images=>setPhotos({propertyId,images})}/></ViewPanel><ViewPanel id="screens" label="TV screens"><DisplayDevices key={propertyId+'screens'} property={property} user={user}/></ViewPanel><ViewPanel id="bulk" label="Apply to properties"><BulkGuestContent key={propertyId+JSON.stringify(displays)} properties={properties} displays={displays} user={user} sourceId={propertyId} onSaved={onSaved}/></ViewPanel></ViewTabs></>;
 }
 function DisplayEditor({property,saved,images,bookings,user,onSaved}){
  const [draft,setDraft]=useState({...defaults,...saved}),[bookingId,setBookingId]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[preview,setPreview]=useState(false);
