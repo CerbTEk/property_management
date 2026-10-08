@@ -1,4 +1,4 @@
-import {localClock,currentGuest} from './schedule.mjs';
+import {localClock,currentStay} from './schedule.mjs';
 import {screenImages} from './media.mjs';
 import {screenVideo} from './video.mjs';
 export async function tokenHash(token){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))).map(b=>b.toString(16).padStart(2,'0')).join('');}
@@ -36,17 +36,18 @@ export function createHandler(admin,clock=()=>new Date()){
    ]);
    if(p.error||d.error)throw Error('Read failed');
    const display=d.data||{title:'Welcome, {{guest}}',welcome:'Make yourself at home.',guidebook:'',recommendations:'',contact:'',house_rules:'',slideshow_seconds:20};
-   let guest='Guest';
+   let guest='Guest',stay=null;
    if(display.personalize){
     const now=clock(),day=localClock(now,p.data.timezone).day;
     const bookings=await admin.from('ts_reservations').select('guest,arrival,departure,status').eq('property_id',device.property_id).eq('owner_id',device.owner_id).eq('status','confirmed').gte('departure',day).order('arrival',{ascending:true});
     if(bookings.error)throw Error('Booking read failed');
-    guest=currentGuest(bookings.data,p.data,now);
+    const selected=currentStay(bookings.data,p.data,now);
+    if(selected){guest=selected.guest;stay={arrival:selected.arrival,departure:selected.departure};}
    }
    const {name,check_in,check_out}=p.data;
    const {title,welcome,guidebook,recommendations,contact,house_rules='',slideshow_seconds=20,music_enabled=true,music_default='woodland',music_volume=15}=display;
    const [images,video]=await Promise.all([screenImages(admin,device),screenVideo(admin,device)]);
-   return reply({property:{name,check_in,check_out},display:{title:title.replaceAll('{{guest}}',guest),welcome,guidebook,recommendations,contact,house_rules,slideshow_seconds,music_enabled,music_default,music_volume,images,video}});
+   return reply({property:{name,check_in,check_out},stay,display:{title:title.replaceAll('{{guest}}',guest),welcome,guidebook,recommendations,contact,house_rules,slideshow_seconds,music_enabled,music_default,music_volume,images,video}});
   }catch{return reply({error:'Display temporarily unavailable'},503);}
  };
 }
