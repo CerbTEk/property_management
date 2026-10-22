@@ -11,10 +11,10 @@ const safeState=state=>({state});
 // device ID, provider code ID or grant. Default is disabled until physical testing.
 export const ttlockExecution=options=>accessExecution({...options,providerName:'ttlock'});
 export const seamExecution=options=>accessExecution({...options,providerName:'seam'});
-export function accessExecution({store,provider,fingerprintKey,providerName,enabled=false,clock=Date.now}){
+export function accessExecution({store,provider,fingerprintKey,providerName,enabled=false,clock=Date.now,authorize=async()=>true}){
  if(!['ttlock','seam'].includes(providerName))throw Error('Unsupported access provider.');
  return async function execute(job,intent){
-  if(!enabled)return safeState('disabled');
+  if(!enabled||!await authorize())return safeState('disabled');
   if(!await store.current(job))return safeState('superseded');
   const snapshot=await store.snapshot(job.owner_id);
   const {data,receipts}=snapshot;
@@ -64,6 +64,7 @@ export function accessExecution({store,provider,fingerprintKey,providerName,enab
    if(!old||old.state!=='installed'||!prior||prior.marker!==label(old)||prior.code_tag!==old.code_tag||!(providerName==='seam'?prior.writable===true:normal(prior,providerName)))return safeState('needs_review');
   }
   const grant=operation==='revoke'?null:{booking_id:action.booking_id,lock_id:action.lock_id,provider:providerName,device_id:String(deviceId),code_tag:action.code_tag,starts_at:new Date(action.start).toISOString(),ends_at:new Date(action.end).toISOString()};
+  if(!await authorize()||!await store.current(job))return safeState('superseded');
   const receipt=await store.begin(job,operation,old?.id||null,grant);
   if(!receipt)return safeState('superseded');
   // Receipt is durable and uncertain BEFORE any provider write. Another worker
@@ -71,6 +72,7 @@ export function accessExecution({store,provider,fingerprintKey,providerName,enab
   if(receipt.owner_id!==job.owner_id||receipt.provider!==providerName||receipt.device_id!==String(deviceId)||receipt.state!=='uncertain'||!receipt.operation_token)throw Error('Invalid access checkpoint.');
   if(!await store.current(job))return safeState('superseded');
   try{
+   if(!await authorize())return safeState('uncertain');
    const result=operation==='revoke'?await provider.revoke({lockId:deviceId,providerCodeId:receipt.provider_code_id}):await provider[operation]({lockId:deviceId,providerCodeId:receipt.provider_code_id,code,start:action.start,end:action.end,receiptId:receipt.id});
    if(!await store.ack(job,receipt,result.provider_code_id))return safeState('uncertain');
    const after=await provider.passcodes(deviceId);

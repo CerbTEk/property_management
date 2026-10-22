@@ -26,7 +26,7 @@ Deno.serve(async req=>{
  if(owner!=='3f03551d-89de-4214-aa7a-db7a86fe1735'&&claims.claims.aal!=='aal2')return reply({error:'Authenticator verification required.'},403);
  if(Number(req.headers.get('content-length'))>4096)return reply({error:'Request too large.'},413);
  let body;try{const raw=await req.text();if(raw.length>4096)return reply({error:'Request too large.'},413);body=JSON.parse(raw);if(!body||typeof body!=='object'||Array.isArray(body))return reply({error:'Invalid request.'},400);}catch{return reply({error:'Invalid request.'},400);}
- if(['ttlock_status','ttlock_connect','ttlock_disconnect','ttlock_sync','ttlock_preflight'].includes(body.action)){
+ if(['ttlock_status','ttlock_connect','ttlock_disconnect','ttlock_sync','ttlock_preflight','ttlock_automation'].includes(body.action)){
   const admin=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
   const store={
    async read(ownerId){const {data,error}=await admin.from('ts_ttlock_accounts').select('*').eq('owner_id',ownerId).maybeSingle();if(error)throw Error('storage');return data;},
@@ -35,7 +35,18 @@ Deno.serve(async req=>{
   };
   const accounts=ttlockAccounts({clientId:Deno.env.get('TTLOCK_CLIENT_ID'),clientSecret:Deno.env.get('TTLOCK_CLIENT_SECRET'),encryptionKey:Deno.env.get('TTLOCK_TOKEN_ENCRYPTION_KEY'),store});
   try{
-   if(body.action==='ttlock_status')return reply(await accounts.status(owner));
+   if(body.action==='ttlock_status'){
+    const status=await accounts.status(owner),account=await store.read(owner);
+    return reply({...status,automation_paused:Deno.env.get('TREESTAND_TTLOCK_AUTOMATION_PAUSED')==='true',automation_enabled:account?.automation_enabled===true,automation_revision:account?.automation_revision||null,automation_updated_at:account?.automation_updated_at||null});
+   }
+   if(body.action==='ttlock_automation'){
+    if(typeof body.enabled!=='boolean'||typeof body.expected_revision!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(body.expected_revision))return reply({error:'Choose an automation setting and refresh its current version.'},400);
+    const status=await accounts.status(owner);
+    if(body.enabled&&!status.ready)return reply({error:'Connect a configured TTLock account before enabling automation.'},409);
+    const {data,error}=await admin.rpc('ts_set_ttlock_automation',{p_owner:owner,p_enabled:body.enabled,p_expected_revision:body.expected_revision});
+    if(error||!data?.[0])return reply({error:error?.code==='40001'?'Automation settings changed. Refresh and try again.':'Automation settings could not be changed. Refresh the connection and try again.'},409);
+    return reply(data[0]);
+   }
    if(body.action==='ttlock_connect')return reply(await accounts.connect(owner,body.username,body.password));
    if(body.action==='ttlock_disconnect'){
     const result=await accounts.disconnect(owner);

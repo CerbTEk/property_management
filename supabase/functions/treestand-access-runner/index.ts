@@ -4,6 +4,7 @@ import {ttlockAccess} from '../../../server/ttlock-access.mjs';
 import {accessPlanningStore} from '../../../server/access-worker.mjs';
 import {accessExecutionStore} from '../../../server/access-execution.mjs';
 import {accessRunner} from '../../../server/ttlock-runner.mjs';
+import {ttlockAutomationPolicy} from '../../../server/ttlock-automation.mjs';
 
 import {seamClient} from '../../../server/seam.mjs';
 import {seamAccess} from '../../../server/seam-access.mjs';
@@ -43,8 +44,8 @@ Deno.serve(async req=>{
    return seamAccess({client,ownerId:owner,connectionIds:data.map(c=>c.id),fingerprintKey});
   }};
  }
- const enabled=Deno.env.get('TTLOCK_AUTOMATION_ENABLED')==='true';
- const approvedDevices=(Deno.env.get('TTLOCK_AUTOMATION_TEST_DEVICES')||'').split(',').map(s=>s.trim()).filter(s=>/^[a-f0-9-]{36}:[1-9][0-9]{0,14}$/i.test(s));
+ // A deployment-wide emergency pause overrides every host's consent.
+ const paused=Deno.env.get('TREESTAND_TTLOCK_AUTOMATION_PAUSED')==='true';
  const clientId=Deno.env.get('TTLOCK_CLIENT_ID'),clientSecret=Deno.env.get('TTLOCK_CLIENT_SECRET'),encryptionKey=Deno.env.get('TTLOCK_TOKEN_ENCRYPTION_KEY');
  const accountStore={
   async read(owner){const {data,error}=await db.from('ts_ttlock_accounts').select('*').eq('owner_id',owner).maybeSingle();if(error)throw Error('storage');return data;},
@@ -53,7 +54,10 @@ Deno.serve(async req=>{
  const accounts=ttlockAccounts({clientId,clientSecret,encryptionKey,store:accountStore});
  const planningStore=accessPlanningStore(db),executionStore=accessExecutionStore(db,planningStore);
  const providerForOwner=async owner=>ttlockAccess({clientId,accessToken:await accounts.accessToken(owner),ownerId:owner,fingerprintKey});
- if(enabled&&clientId&&clientSecret&&encryptionKey)providers.ttlock={providerForOwner,approvedDevices};
+ if(clientId&&clientSecret&&encryptionKey)providers.ttlock={providerForOwner,...ttlockAutomationPolicy({paused,readAccount:async owner=>{
+  const {data,error}=await db.from('ts_ttlock_accounts').select('owner_id,status,automation_enabled,automation_revision').eq('owner_id',owner).maybeSingle();
+  if(error)throw Error('Automation consent unavailable.');return data;
+ }})};
  try{return reply(await accessRunner({planningStore,executionStore,providers,fingerprintKey,enabled:true})());}
  catch{return reply({error:'Access runner is temporarily unavailable.'},503);}
 });
